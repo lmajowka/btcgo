@@ -13,6 +13,7 @@ import (
     "runtime"
     "strconv"
     "sync"
+    "strings"
     "time"
 
     "github.com/decred/dcrd/dcrec/secp256k1/v4"
@@ -286,10 +287,16 @@ func loadRanges(filename string) (*Ranges, error) {
 // promptRangeNumber prompts the user to select a range number
 func promptRangeNumber(totalRanges int) int {
     reader := bufio.NewReader(os.Stdin)
+    charReadline := '\n'
+
+    if runtime.GOOS == "windows" {
+        charReadline = '\r'
+    }
+
     for {
         fmt.Printf("Enter the range number (1 to %d): ", totalRanges)
-        input, _ := reader.ReadString('\n')
-        input = input[:len(input)-1] // Remove newline character
+        input, _ := reader.ReadString(byte(charReadline))
+        input = strings.TrimSpace(input)
         rangeNumber, err := strconv.Atoi(input)
         if err == nil && rangeNumber >= 1 && rangeNumber <= totalRanges {
             return rangeNumber
@@ -297,3 +304,5 @@ func promptRangeNumber(totalRanges int) int {
         fmt.Println("Invalid range number. Please try again.")
     }
 }
+
+
