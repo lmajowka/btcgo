@@ -23,76 +23,76 @@ import (
 	"golang.org/x/crypto/ripemd160"
 )
 
-// Wallets struct para armazenar o array de endereços de carteiras
+// Wallets struct to hold the array of wallet addresses
 type Wallets struct {
 	Addresses []string `json:"wallets"`
 }
 
-// Range struct para armazenar o mínimo, máximo e status
+// Range struct to hold the minimum, maximum, and status
 type Range struct {
 	Min    string `json:"min"`
 	Max    string `json:"max"`
 	Status int    `json:"status"`
 }
 
-// Ranges struct para armazenar um array de ranges
+// Ranges struct to hold an array of ranges
 type Ranges struct {
 	Ranges []Range `json:"ranges"`
 }
 
 func main() {
+
 	green := color.New(color.FgGreen).SprintFunc()
 
-	// Carregar ranges do arquivo JSON
 	ranges, err := loadRanges("ranges.json")
 	if err != nil {
-		log.Fatalf("Falha ao carregar ranges: %v", err)
+		log.Fatalf("Failed to load ranges: %v", err)
 	}
 
 	color.Cyan("BTCGO - Investidor Internacional")
 	color.White("v0.1")
 
-	// Perguntar ao usuário o número do range
+	// Ask the user for the range number
 	rangeNumber := promptRangeNumber(len(ranges.Ranges))
 
-	// Inicializar privKeyInt com o valor máximo do range selecionado
-	privKeyHex := ranges.Ranges[rangeNumber-1].Max
+	// Initialize privKeyInt with the minimum value of the selected range
+	privKeyHex := ranges.Ranges[rangeNumber-1].Min
 
 	privKeyInt := new(big.Int)
 	privKeyInt.SetString(privKeyHex[2:], 16)
 
-	// Carregar endereços de carteira do arquivo JSON
+	// Load wallet addresses from JSON file
 	wallets, err := loadWallets("wallets.json")
 	if err != nil {
-		log.Fatalf("Falha ao carregar carteiras: %v", err)
+		log.Fatalf("Failed to load wallets: %v", err)
 	}
 
 	keysChecked := 0
 	startTime := time.Now()
 
-	// Número de núcleos de CPU a serem utilizados
+	// Number of CPU cores to use
 	numCPU := runtime.NumCPU()
 	fmt.Printf("CPUs detectados: %s\n", green(numCPU))
 	runtime.GOMAXPROCS(numCPU * 2)
 
-	// Criar um canal para enviar chaves privadas aos trabalhadores
+	// Create a channel to send private keys to workers
 	privKeyChan := make(chan *big.Int)
-	// Criar um canal para receber resultados dos trabalhadores
+	// Create a channel to receive results from workers
 	resultChan := make(chan *big.Int)
-	// Criar um grupo de espera para aguardar todos os trabalhadores terminarem
+	// Create a wait group to wait for all workers to finish
 	var wg sync.WaitGroup
 
-	// Iniciar goroutines de trabalhadores
+	// Start worker goroutines
 	for i := 0; i < numCPU*2; i++ {
 		wg.Add(1)
 		go worker(wallets, privKeyChan, resultChan, &wg)
 	}
 
-	// Ticker para atualizações periódicas a cada 5 segundos
+	// Ticker for periodic updates every 5 seconds
 	ticker := time.NewTicker(5 * time.Second)
 	done := make(chan bool)
 
-	// Goroutine para imprimir atualizações de velocidade
+	// Goroutine to print speed updates
 	go func() {
 		for {
 			select {
@@ -107,39 +107,37 @@ func main() {
 		}
 	}()
 
-	// Enviar chaves privadas aos trabalhadores
+	// Send private keys to the workers
 	go func() {
-		minKeyInt := new(big.Int)
-		minKeyInt.SetString(ranges.Ranges[rangeNumber-1].Min[2:], 16)
-		for privKeyInt.Cmp(minKeyInt) >= 0 {
+		for i := 1; i < 2; {
 			privKeyCopy := new(big.Int).Set(privKeyInt)
 			privKeyChan <- privKeyCopy
-			privKeyInt.Sub(privKeyInt, big.NewInt(1))
+			privKeyInt.Add(privKeyInt, big.NewInt(1))
 			keysChecked++
 		}
 		close(privKeyChan)
 	}()
-
-	// Aguardar um resultado de qualquer trabalhador
+	// Wait for a result from any worker
 	var foundAddress *big.Int
 	select {
 	case foundAddress = <-resultChan:
 		color.Yellow("Chave privada encontrada: %064x\n", foundAddress)
-	case <-time.After(time.Minute * 10): // Opcional: Timeout após 10 minutos
-		fmt.Println("Nenhum endereço encontrado dentro do limite de tempo.")
+		// close(resultChan)
+	case <-time.After(time.Minute * 10): // Optional: Timeout after 1 minute
+		fmt.Println("No address found within the time limit.")
 	}
 
-	// Aguardar todos os trabalhadores terminarem
+	// Wait for all workers to finish
 	go func() {
 		wg.Wait()
-		close(done)
+		close(privKeyChan)
 	}()
 
 	elapsedTime := time.Since(startTime).Seconds()
 	keysPerSecond := float64(keysChecked) / elapsedTime
 
 	fmt.Printf("Chaves checadas: %s\n", humanize.Comma(int64(keysChecked)))
-	fmt.Printf("Tempo: %.2f segundos\n", elapsedTime)
+	fmt.Printf("Tempo: %.2f seconds\n", elapsedTime)
 	fmt.Printf("Chaves por segundo: %s\n", humanize.Comma(int64(keysPerSecond)))
 }
 
@@ -155,28 +153,30 @@ func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *bi
 }
 
 func createPublicAddress(privKeyInt *big.Int) string {
+
 	privKeyHex := fmt.Sprintf("%064x", privKeyInt)
 
-	// Decodificar a chave privada hexadecimal
+	// Decode the hexadecimal private key
 	privKeyBytes, err := hex.DecodeString(privKeyHex)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Criar uma nova chave privada usando o pacote secp256k1
+	// Create a new private key using the secp256k1 package
 	privKey := secp256k1.PrivKeyFromBytes(privKeyBytes)
 
-	// Obter a chave pública correspondente no formato comprimido
+	// Get the corresponding public key in compressed format
 	compressedPubKey := privKey.PubKey().SerializeCompressed()
 
-	// Gerar um endereço Bitcoin a partir da chave pública
+	// Generate a Bitcoin address from the public key
 	pubKeyHash := hash160(compressedPubKey)
 	address := encodeAddress(pubKeyHash, &chaincfg.MainNetParams)
 
 	return address
+
 }
 
-// hash160 calcula o hash RIPEMD160(SHA256(b)).
+// hash160 computes the RIPEMD160(SHA256(b)) hash.
 func hash160(b []byte) []byte {
 	h := sha256.New()
 	h.Write(b)
@@ -187,7 +187,7 @@ func hash160(b []byte) []byte {
 	return r.Sum(nil)
 }
 
-// encodeAddress codifica o hash da chave pública em um endereço Bitcoin.
+// encodeAddress encodes the public key hash into a Bitcoin address.
 func encodeAddress(pubKeyHash []byte, params *chaincfg.Params) string {
 	versionedPayload := append([]byte{params.PubKeyHashAddrID}, pubKeyHash...)
 	checksum := doubleSha256(versionedPayload)[:4]
@@ -195,14 +195,14 @@ func encodeAddress(pubKeyHash []byte, params *chaincfg.Params) string {
 	return base58Encode(fullPayload)
 }
 
-// doubleSha256 calcula SHA256(SHA256(b)).
+// doubleSha256 computes SHA256(SHA256(b)).
 func doubleSha256(b []byte) []byte {
 	first := sha256.Sum256(b)
 	second := sha256.Sum256(first[:])
 	return second[:]
 }
 
-// base58Encode codifica um slice de bytes em uma string codificada em base58.
+// base58Encode encodes a byte slice to a base58-encoded string.
 var base58Alphabet = []byte("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
 
 func base58Encode(input []byte) string {
@@ -218,12 +218,12 @@ func base58Encode(input []byte) string {
 		result = append(result, base58Alphabet[mod.Int64()])
 	}
 
-	// Inverter o resultado
+	// Reverse the result
 	for i, j := 0, len(result)-1; i < j; i, j = i+1, j-1 {
 		result[i], result[j] = result[j], result[i]
 	}
 
-	// Adicionar zeros à esquerda
+	// Add leading zeroes
 	for _, b := range input {
 		if b != 0 {
 			break
@@ -234,7 +234,7 @@ func base58Encode(input []byte) string {
 	return string(result)
 }
 
-// loadWallets carrega endereços de carteiras de um arquivo JSON
+// loadWallets loads wallet addresses from a JSON file
 func loadWallets(filename string) (*Wallets, error) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -255,7 +255,7 @@ func loadWallets(filename string) (*Wallets, error) {
 	return &wallets, nil
 }
 
-// contains verifica se uma string está em um slice de strings
+// contains checks if a string is in a slice of strings
 func contains(slice []string, item string) bool {
 	for _, a := range slice {
 		if a == item {
@@ -265,7 +265,7 @@ func contains(slice []string, item string) bool {
 	return false
 }
 
-// loadRanges carrega ranges de um arquivo JSON
+// loadRanges loads ranges from a JSON file
 func loadRanges(filename string) (*Ranges, error) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -286,7 +286,7 @@ func loadRanges(filename string) (*Ranges, error) {
 	return &ranges, nil
 }
 
-// promptRangeNumber solicita ao usuário que selecione um número de range
+// promptRangeNumber prompts the user to select a range number
 func promptRangeNumber(totalRanges int) int {
 	reader := bufio.NewReader(os.Stdin)
 	charReadline := '\n'
@@ -303,6 +303,6 @@ func promptRangeNumber(totalRanges int) int {
 		if err == nil && rangeNumber >= 1 && rangeNumber <= totalRanges {
 			return rangeNumber
 		}
-		fmt.Println("Número inválido.")
+		fmt.Println("Numero invalido.")
 	}
 }
