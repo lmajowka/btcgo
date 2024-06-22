@@ -31,7 +31,7 @@ type Wallets struct {
 // Range struct para armazenar o mínimo, máximo e status
 type Range struct {
 	Min    string `json:"min"`
-	Max    string `json:"status"`
+	Max    string `json:"max"`
 	Status int    `json:"status"`
 }
 
@@ -133,37 +133,35 @@ func main() {
 
 	// Aguardar um resultado de qualquer trabalhador
 	var foundAddress *big.Int
-	select {
-	case foundAddress = <-resultChan:
-		color.Yellow("Chave privada encontrada: %064x\n", foundAddress)
+	foundAddress = <-resultChan
+	color.Yellow("Chave privada encontrada: %064x\n", foundAddress)
 
-		// Chave privada encontrada, formatando a saída
-		addressInfo := fmt.Sprintf("Chave privada encontrada: %064x\n", foundAddress)
+	// Chave privada encontrada, formatando a saída
+	addressInfo := fmt.Sprintf("Chave privada encontrada: %064x\n", foundAddress)
 
-		// Calculando a porcentagem
-		percentage := calculatePercentage(foundAddress, minKeyInt, maxKeyInt)
-		fmt.Printf("Porcentagem da chave encontrada: %.2f%%\n", percentage)
+	// Calculando a porcentagem
+	percentage := calculatePercentage(foundAddress, minKeyInt, maxKeyInt)
+	fmt.Printf("Porcentagem da chave encontrada: %.2f%%\n", percentage)
 
-		// Criando um arquivo para registrar a chave encontrada
-		fileName := "Chave_encontrada.txt"
-		file, err := os.Create(fileName)
-		if err != nil {
-			fmt.Println("Erro ao criar o arquivo:", err)
-			return
-		}
-		defer file.Close()
-
-		// Escrevendo a informação no arquivo
-		_, err = file.WriteString(fmt.Sprintf("%s\nPorcentagem: %.2f%%\n", addressInfo, percentage))
-		if err != nil {
-			fmt.Println("Erro ao escrever no arquivo:", err)
-			return
-		}
-
-		// Confirmação para o usuário
-		color.Yellow(addressInfo)
-		fmt.Printf("Chave privada encontrada e registrada em %s\n", fileName)
+	// Criando um arquivo para registrar a chave encontrada
+	fileName := "Chave_encontrada.txt"
+	file, err := os.Create(fileName)
+	if err != nil {
+		fmt.Println("Erro ao criar o arquivo:", err)
+		return
 	}
+	defer file.Close()
+
+	// Escrevendo a informação no arquivo
+	_, err = file.WriteString(fmt.Sprintf("%s\nPorcentagem: %.2f%%\n", addressInfo, percentage))
+	if err != nil {
+		fmt.Println("Erro ao escrever no arquivo:", err)
+		return
+	}
+
+	// Confirmação para o usuário
+	color.Yellow(addressInfo)
+	fmt.Printf("Chave privada encontrada e registrada em %s\n", fileName)
 
 	// Aguardar todos os trabalhadores terminarem
 	go func() {
@@ -259,6 +257,40 @@ func loadRanges(filename string) (*Ranges, error) {
 	return &ranges, nil
 }
 
+func promptRangeNumber(totalRanges int) int {
+	reader := bufio.NewReader(os.Stdin)
+	charReadline := '\n'
+
+	if runtime.GOOS == "windows" {
+		charReadline = '\r'
+	}
+
+	for {
+		fmt.Printf("Escolha a carteira (1 a %d): ", totalRanges)
+		input, _ := reader.ReadString(byte(charReadline))
+		input = strings.TrimSpace(input)
+		rangeNumber, err := strconv.Atoi(input)
+		if err == nil && rangeNumber >= 1 && rangeNumber <= totalRanges {
+			return rangeNumber
+		}
+		fmt.Println("Número inválido.")
+	}
+}
+
+func calculatePercentage(privKeyInt, minKeyInt, maxKeyInt *big.Int) float64 {
+	totalRange := new(big.Int).Sub(maxKeyInt, minKeyInt)
+	foundPosition := new(big.Int).Sub(privKeyInt, minKeyInt)
+
+	percentage := new(big.Float).Quo(
+		new(big.Float).SetInt(foundPosition),
+		new(big.Float).SetInt(totalRange),
+	)
+	percentage.Mul(percentage, big.NewFloat(100))
+
+	percentageFloat, _ := percentage.Float64()
+	return percentageFloat
+}
+
 func contains(slice []string, item string) bool {
 	for _, a := range slice {
 		if a == item {
@@ -268,59 +300,24 @@ func contains(slice []string, item string) bool {
 	return false
 }
 
-func promptRangeNumber(totalRanges int) int {
-	reader := bufio.NewReader(os.Stdin)
-	for {
-		fmt.Printf("Escolha um número de range (1-%d): ", totalRanges)
-		input, err := reader.ReadString('\n')
-		if err != nil {
-			log.Fatalf("Falha ao ler entrada: %v", err)
-		}
-
-		input = strings.TrimSpace(input)
-		rangeNumber, err := strconv.Atoi(input)
-		if err == nil && rangeNumber >= 1 && rangeNumber <= totalRanges {
-			return rangeNumber
-		}
-
-		fmt.Println("Número de range inválido. Tente novamente.")
-	}
-}
-
+// Base58Encode encodes a byte slice to a Base58 encoded string.
 func Base58Encode(input []byte) string {
-	const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+	const base58Alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+	x := new(big.Int).SetBytes(input)
+	base := big.NewInt(int64(len(base58Alphabet)))
+	zero := big.NewInt(0)
+	mod := &big.Int{}
+	result := make([]byte, 0, len(input)*136/100)
 
-	// Converter o número inteiro em Base58
-	bigInt := new(big.Int).SetBytes(input)
-	var result []byte
-
-	for bigInt.Sign() > 0 {
-		mod := new(big.Int)
-		bigInt.DivMod(bigInt, big.NewInt(58), mod)
-		result = append(result, alphabet[mod.Int64()])
+	for x.Cmp(zero) > 0 {
+		x.DivMod(x, base, mod)
+		result = append(result, base58Alphabet[mod.Int64()])
 	}
 
-	// Adicionar '1' para cada byte zero no início da entrada
-	for _, b := range input {
-		if b != 0 {
-			break
-		}
-		result = append(result, alphabet[0])
-	}
-
-	// Inverter a sequência de bytes
+	// Reverse result
 	for i, j := 0, len(result)-1; i < j; i, j = i+1, j-1 {
 		result[i], result[j] = result[j], result[i]
 	}
 
 	return string(result)
-}
-
-func calculatePercentage(foundAddress, minKeyInt, maxKeyInt *big.Int) float64 {
-	rangeSize := new(big.Int).Sub(maxKeyInt, minKeyInt)
-	position := new(big.Int).Sub(foundAddress, minKeyInt)
-	percentage := new(big.Float).Quo(new(big.Float).SetInt(position), new(big.Float).SetInt(rangeSize))
-	percentage.Mul(percentage, big.NewFloat(100))
-	percentageFloat, _ := percentage.Float64()
-	return percentageFloat
 }
