@@ -234,6 +234,7 @@ func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *bi
 // createPublicAddress cria um endereço público a partir de uma chave privada
 func createPublicAddress(privKeyInt *big.Int) string {
 	privKey
+	Hex := fmt.Sprintf("%064x", privKeyInt)
 // Decodificar a chave privada hexadecimal
 privKeyBytes, err := hex.DecodeString(privKeyHex)
 if err != nil {
