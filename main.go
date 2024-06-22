@@ -1,7 +1,9 @@
 package main
 
 import (
+	"btcgo/crypto/base58"
 	"bufio"
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -25,7 +27,7 @@ import (
 
 // Wallets struct to hold the array of wallet addresses
 type Wallets struct {
-	Addresses []string `json:"wallets"`
+	Addresses [][]byte `json:"wallets"`
 }
 
 // Range struct to hold the minimum, maximum, and status
@@ -122,6 +124,7 @@ func main() {
 	select {
 	case foundAddress = <-resultChan:
 		color.Yellow("Chave privada encontrada: %064x\n", foundAddress)
+		color.Yellow("WIF: %s", generateWif(foundAddress))
 		// close(resultChan)
 	case <-time.After(time.Minute * 10): // Optional: Timeout after 1 minute
 		fmt.Println("No address found within the time limit.")
@@ -144,7 +147,7 @@ func main() {
 func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *big.Int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for privKeyInt := range privKeyChan {
-		address := createPublicAddress(privKeyInt)
+		address := createPublicHash160(privKeyInt)
 		if contains(wallets.Addresses, address) {
 			resultChan <- privKeyInt
 			return
@@ -152,7 +155,7 @@ func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *bi
 	}
 }
 
-func createPublicAddress(privKeyInt *big.Int) string {
+func createPublicHash160(privKeyInt *big.Int) []byte {
 
 	privKeyHex := fmt.Sprintf("%064x", privKeyInt)
 
@@ -170,9 +173,9 @@ func createPublicAddress(privKeyInt *big.Int) string {
 
 	// Generate a Bitcoin address from the public key
 	pubKeyHash := hash160(compressedPubKey)
-	address := encodeAddress(pubKeyHash, &chaincfg.MainNetParams)
+	//address := encodeAddress(pubKeyHash, &chaincfg.MainNetParams)
 
-	return address
+	return pubKeyHash
 
 }
 
@@ -192,7 +195,7 @@ func encodeAddress(pubKeyHash []byte, params *chaincfg.Params) string {
 	versionedPayload := append([]byte{params.PubKeyHashAddrID}, pubKeyHash...)
 	checksum := doubleSha256(versionedPayload)[:4]
 	fullPayload := append(versionedPayload, checksum...)
-	return base58Encode(fullPayload)
+	return base58.Encode(fullPayload)
 }
 
 // doubleSha256 computes SHA256(SHA256(b)).
@@ -202,36 +205,32 @@ func doubleSha256(b []byte) []byte {
 	return second[:]
 }
 
-// base58Encode encodes a byte slice to a base58-encoded string.
-var base58Alphabet = []byte("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
+// generate wif from private key
+func generateWif(privKeyInt *big.Int) string {
+	privKeyHex := fmt.Sprintf("%064x", privKeyInt)
 
-func base58Encode(input []byte) string {
-	var result []byte
-	x := new(big.Int).SetBytes(input)
-
-	base := big.NewInt(int64(len(base58Alphabet)))
-	zero := big.NewInt(0)
-	mod := &big.Int{}
-
-	for x.Cmp(zero) != 0 {
-		x.DivMod(x, base, mod)
-		result = append(result, base58Alphabet[mod.Int64()])
+	// Decode the hexadecimal private key
+	privKeyBytes, err := hex.DecodeString(privKeyHex)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	// Reverse the result
-	for i, j := 0, len(result)-1; i < j; i, j = i+1, j-1 {
-		result[i], result[j] = result[j], result[i]
-	}
+	// Add prefix and sufix
+	extendedKey := append([]byte{byte(0x80)}, privKeyBytes...)
+	extendedKey = append(extendedKey, byte(0x01))
 
-	// Add leading zeroes
-	for _, b := range input {
-		if b != 0 {
-			break
-		}
-		result = append([]byte{base58Alphabet[0]}, result...)
-	}
+	// Calc checksum
+	firstSHA := sha256.Sum256(extendedKey)
+	secondSHA := sha256.Sum256(firstSHA[:])
+	checksum := secondSHA[:4]
 
-	return string(result)
+	// Add checksum
+	finalKey := append(extendedKey, checksum...)
+
+	// Encode to base58
+	wif := base58.Encode(finalKey)
+
+	return wif
 }
 
 // loadWallets loads wallet addresses from a JSON file
@@ -247,18 +246,27 @@ func loadWallets(filename string) (*Wallets, error) {
 		return nil, err
 	}
 
-	var wallets Wallets
-	if err := json.Unmarshal(bytes, &wallets); err != nil {
+	type WalletsTemp struct {
+		Addresses []string `json:"wallets"`
+	}
+
+	var walletsTemp WalletsTemp
+	if err := json.Unmarshal(bytes, &walletsTemp); err != nil {
 		return nil, err
+	}
+
+	var wallets Wallets
+	for _, address := range walletsTemp.Addresses {
+		wallets.Addresses = append(wallets.Addresses, base58.Decode(address)[1:21])
 	}
 
 	return &wallets, nil
 }
 
 // contains checks if a string is in a slice of strings
-func contains(slice []string, item string) bool {
+func contains(slice [][]byte, item []byte) bool {
 	for _, a := range slice {
-		if a == item {
+		if bytes.Equal(a, item) {
 			return true
 		}
 	}
