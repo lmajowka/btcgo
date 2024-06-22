@@ -14,13 +14,14 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
-	"github.com/dustin/go-humanize"
-	"github.com/fatih/color"
 	"golang.org/x/crypto/ripemd160"
+
+	"gorgonia.org/gocudnn"
+	"gorgonia.org/gorgonia"
+	"gorgonia.org/tensor"
 )
 
 // Wallets struct para armazenar o array de endereços de carteiras
@@ -41,149 +42,35 @@ type Ranges struct {
 }
 
 func main() {
-	green := color.New(color.FgGreen).SprintFunc()
+	// Initialize CUDA device
+	if err := gocudnn.Initialize(); err != nil {
+		log.Fatalf("Could not initialize CUDA: %v", err)
+	}
+	defer gocudnn.Shutdown()
 
-	// Carregar ranges do arquivo JSON
-	ranges, err := loadRanges("ranges.json")
-	if err != nil {
-		log.Fatalf("Falha ao carregar ranges: %v", err)
+	// Example of using Gorgonia for tensor operations on GPU
+	g := gorgonia.NewGraph()
+
+	// Create a tensor with some values
+	backing := []float32{1, 2, 3, 4}
+	a := tensor.New(tensor.Of(tensor.Float32), tensor.WithShape(2, 2), tensor.WithBacking(backing))
+
+	// Transfer the tensor to GPU
+	tensorGPU := gorgonia.NewTensor(g, a.Dtype(), a.Dims(), gorgonia.WithShape(a.Shape()...), gorgonia.WithValue(a), gorgonia.WithDevice(gorgonia.UseGPU()))
+
+	// Perform some operations
+	result := gorgonia.Must(gorgonia.Add(tensorGPU, tensorGPU))
+
+	// Create a VM and run the graph
+	vmachine := gorgonia.NewTapeMachine(g, gorgonia.BindDualValues(tensorGPU))
+	defer vmachine.Close()
+
+	if err := vmachine.RunAll(); err != nil {
+		log.Fatalf("Failed to run the graph: %v", err)
 	}
 
-	color.Cyan("BTCGO - Investidor Internacional")
-	color.White("v0.1")
-
-	// Perguntar ao usuário o número do range
-	rangeNumber := promptRangeNumber(len(ranges.Ranges))
-
-	// Inicializar privKeyInt com o valor máximo do range selecionado
-	privKeyHex := ranges.Ranges[rangeNumber-1].Max
-
-	privKeyInt := new(big.Int)
-	privKeyInt.SetString(privKeyHex[2:], 16)
-
-	// Carregar endereços de carteira do arquivo JSON
-	wallets, err := loadWallets("wallets.json")
-	if err != nil {
-		log.Fatalf("Falha ao carregar carteiras: %v", err)
-	}
-
-	keysChecked := 0
-	startTime := time.Now()
-
-	// Número de núcleos de CPU a serem utilizados
-	numCPU := runtime.NumCPU()
-	fmt.Printf("CPUs detectados: %s\n", green(numCPU))
-	runtime.GOMAXPROCS(numCPU * 2)
-
-	// Criar um canal para enviar chaves privadas aos trabalhadores
-	privKeyChan := make(chan *big.Int)
-	// Criar um canal para receber resultados dos trabalhadores
-	resultChan := make(chan *big.Int)
-	// Criar um grupo de espera para aguardar todos os trabalhadores terminarem
-	var wg sync.WaitGroup
-
-	// Iniciar goroutines de trabalhadores
-	for i := 0; i < numCPU*2; i++ {
-		wg.Add(1)
-		go worker(wallets, privKeyChan, resultChan, &wg)
-	}
-
-	// Ticker para atualizações periódicas a cada 5 segundos
-	ticker := time.NewTicker(5 * time.Second)
-	done := make(chan bool)
-
-	// Definir o range total para cálculo de porcentagem
-	minKeyInt := new(big.Int)
-	minKeyInt.SetString(ranges.Ranges[rangeNumber-1].Min[2:], 16)
-	maxKeyInt := new(big.Int)
-	maxKeyInt.SetString(ranges.Ranges[rangeNumber-1].Max[2:], 16)
-	totalKeys := new(big.Int).Sub(maxKeyInt, minKeyInt)
-
-	// Goroutine para imprimir atualizações de velocidade
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				elapsedTime := time.Since(startTime).Seconds()
-				keysPerSecond := float64(keysChecked) / elapsedTime
-				checkedKeys := new(big.Int).Sub(maxKeyInt, privKeyInt)
-				percentageChecked := new(big.Float).Quo(new(big.Float).SetInt(checkedKeys), new(big.Float).SetInt(totalKeys))
-				percentageChecked.Mul(percentageChecked, big.NewFloat(100))
-				percentageCheckedFloat, _ := percentageChecked.Float64()
-
-				fmt.Printf("Chaves checadas: %s, Chaves por segundo: %s, Porcentagem checada: %.2f%%\n", humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)), percentageCheckedFloat)
-
-			case <-done:
-				ticker.Stop()
-				return
-			}
-		}
-	}()
-
-	// Enviar chaves privadas aos trabalhadores
-	go func() {
-		for privKeyInt.Cmp(minKeyInt) >= 0 {
-			privKeyCopy := new(big.Int).Set(privKeyInt)
-			privKeyChan <- privKeyCopy
-			privKeyInt.Sub(privKeyInt, big.NewInt(1))
-			keysChecked++
-		}
-		close(privKeyChan)
-	}()
-
-	// Aguardar um resultado de qualquer trabalhador
-	var foundAddress *big.Int
-	select {
-	case foundAddress = <-resultChan:
-		color.Yellow("Chave privada encontrada: %064x\n", foundAddress)
-
-		// Chave privada encontrada, formatando a saída
-		addressInfo := fmt.Sprintf("Chave privada encontrada: %064x\n", foundAddress)
-
-		// Calculando a porcentagem
-		percentage := calculatePercentage(foundAddress, minKeyInt, maxKeyInt)
-		fmt.Printf("Porcentagem da chave encontrada: %.2f%%\n", percentage)
-
-		// Criando um arquivo para registrar a chave encontrada
-		fileName := "Chave_encontrada.txt"
-		file, err := os.Create(fileName)
-		if err != nil {
-			fmt.Println("Erro ao criar o arquivo:", err)
-			return
-		}
-		defer file.Close()
-
-		// Escrevendo a informação no arquivo
-		_, err = file.WriteString(fmt.Sprintf("%s\nPorcentagem: %.2f%%\n", addressInfo, percentage))
-		if err != nil {
-			fmt.Println("Erro ao escrever no arquivo:", err)
-			return
-		}
-
-		// Confirmação para o usuário
-		color.Yellow(addressInfo)
-		fmt.Printf("Chave privada encontrada e registrada em %s\n", fileName)
-	case <-time.After(time.Minute * 100000000): // Opcional: Timeout após 10 minutos
-		fmt.Println("Nenhum endereço encontrado dentro do limite de tempo.")
-	}
-
-	// Aguardar todos os trabalhadores terminarem
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
-
-	elapsedTime := time.Since(startTime).Seconds()
-	keysPerSecond := float64(keysChecked) / elapsedTime
-	checkedKeys := new(big.Int).Sub(maxKeyInt, privKeyInt)
-	percentageChecked := new(big.Float).Quo(new(big.Float).SetInt(checkedKeys), new(big.Float).SetInt(totalKeys))
-	percentageChecked.Mul(percentageChecked, big.NewFloat(100))
-	percentageCheckedFloat, _ := percentageChecked.Float64()
-
-	fmt.Printf("Chaves checadas: %s\n", humanize.Comma(int64(keysChecked)))
-	fmt.Printf("Tempo: %.2f segundos\n", elapsedTime)
-	fmt.Printf("Chaves por segundo: %s\n", humanize.Comma(int64(keysPerSecond)))
-	fmt.Printf("Porcentagem checada: %.2f%%\n", percentageCheckedFloat)
+	// Extract the result
+	fmt.Println("Result: ", result.Value())
 }
 
 func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *big.Int, wg *sync.WaitGroup) {
