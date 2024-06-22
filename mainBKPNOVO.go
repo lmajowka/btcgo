@@ -92,13 +92,6 @@ func main() {
 	ticker := time.NewTicker(5 * time.Second)
 	done := make(chan bool)
 
-	// Definir o range total para cálculo de porcentagem
-	minKeyInt := new(big.Int)
-	minKeyInt.SetString(ranges.Ranges[rangeNumber-1].Min[2:], 16)
-	maxKeyInt := new(big.Int)
-	maxKeyInt.SetString(ranges.Ranges[rangeNumber-1].Max[2:], 16)
-	totalKeys := new(big.Int).Sub(maxKeyInt, minKeyInt)
-
 	// Goroutine para imprimir atualizações de velocidade
 	go func() {
 		for {
@@ -106,12 +99,7 @@ func main() {
 			case <-ticker.C:
 				elapsedTime := time.Since(startTime).Seconds()
 				keysPerSecond := float64(keysChecked) / elapsedTime
-				checkedKeys := new(big.Int).Sub(maxKeyInt, privKeyInt)
-				percentageChecked := new(big.Float).Quo(new(big.Float).SetInt(checkedKeys), new(big.Float).SetInt(totalKeys))
-				percentageChecked.Mul(percentageChecked, big.NewFloat(100))
-				percentageCheckedFloat, _ := percentageChecked.Float64()
-
-				fmt.Printf("Chaves checadas: %s, Chaves por segundo: %s, Porcentagem checada: %.2f%%\n", humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)), percentageCheckedFloat)
+				fmt.Printf("Chaves checadas: %s, Chaves por segundo: %s\n", humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
 
 			case <-done:
 				ticker.Stop()
@@ -122,6 +110,8 @@ func main() {
 
 	// Enviar chaves privadas aos trabalhadores
 	go func() {
+		minKeyInt := new(big.Int)
+		minKeyInt.SetString(ranges.Ranges[rangeNumber-1].Min[2:], 16)
 		for privKeyInt.Cmp(minKeyInt) >= 0 {
 			privKeyCopy := new(big.Int).Set(privKeyInt)
 			privKeyChan <- privKeyCopy
@@ -140,10 +130,6 @@ func main() {
 		// Chave privada encontrada, formatando a saída
 		addressInfo := fmt.Sprintf("Chave privada encontrada: %064x\n", foundAddress)
 
-		// Calculando a porcentagem
-		percentage := calculatePercentage(foundAddress, minKeyInt, maxKeyInt)
-		fmt.Printf("Porcentagem da chave encontrada: %.2f%%\n", percentage)
-
 		// Criando um arquivo para registrar a chave encontrada
 		fileName := "Chave_encontrada.txt"
 		file, err := os.Create(fileName)
@@ -154,7 +140,7 @@ func main() {
 		defer file.Close()
 
 		// Escrevendo a informação no arquivo
-		_, err = file.WriteString(fmt.Sprintf("%s\nPorcentagem: %.2f%%\n", addressInfo, percentage))
+		_, err = file.WriteString(addressInfo)
 		if err != nil {
 			fmt.Println("Erro ao escrever no arquivo:", err)
 			return
@@ -162,8 +148,8 @@ func main() {
 
 		// Confirmação para o usuário
 		color.Yellow(addressInfo)
-		fmt.Printf("Chave privada encontrada e registrada em %s\n", fileName)
-	case <-time.After(time.Minute * 100000000): // Opcional: Timeout após 10 minutos
+		fmt.Println("Chave privada encontrada e registrada em", fileName)
+	case <-time.After(time.Minute * 10000000): // Opcional: Timeout após 10 minutos
 		fmt.Println("Nenhum endereço encontrado dentro do limite de tempo.")
 	}
 
@@ -175,22 +161,16 @@ func main() {
 
 	elapsedTime := time.Since(startTime).Seconds()
 	keysPerSecond := float64(keysChecked) / elapsedTime
-	checkedKeys := new(big.Int).Sub(maxKeyInt, privKeyInt)
-	percentageChecked := new(big.Float).Quo(new(big.Float).SetInt(checkedKeys), new(big.Float).SetInt(totalKeys))
-	percentageChecked.Mul(percentageChecked, big.NewFloat(100))
-	percentageCheckedFloat, _ := percentageChecked.Float64()
 
 	fmt.Printf("Chaves checadas: %s\n", humanize.Comma(int64(keysChecked)))
 	fmt.Printf("Tempo: %.2f segundos\n", elapsedTime)
 	fmt.Printf("Chaves por segundo: %s\n", humanize.Comma(int64(keysPerSecond)))
-	fmt.Printf("Porcentagem checada: %.2f%%\n", percentageCheckedFloat)
 }
 
 func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *big.Int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for privKeyInt := range privKeyChan {
 		address := createPublicAddress(privKeyInt)
-		//fmt.Printf("Endereço publico: ", address)
 		if contains(wallets.Addresses, address) {
 			resultChan <- privKeyInt
 			return
@@ -349,19 +329,4 @@ func promptRangeNumber(totalRanges int) int {
 		}
 		fmt.Println("Número inválido.")
 	}
-}
-
-// calculatePercentage calcula a porcentagem da chave privada encontrada dentro do range
-func calculatePercentage(privKeyInt, minKeyInt, maxKeyInt *big.Int) float64 {
-	totalRange := new(big.Int).Sub(maxKeyInt, minKeyInt)
-	foundPosition := new(big.Int).Sub(privKeyInt, minKeyInt)
-
-	percentage := new(big.Float).Quo(
-		new(big.Float).SetInt(foundPosition),
-		new(big.Float).SetInt(totalRange),
-	)
-	percentage.Mul(percentage, big.NewFloat(100))
-
-	percentageFloat, _ := percentage.Float64()
-	return percentageFloat
 }
