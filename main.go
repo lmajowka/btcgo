@@ -18,7 +18,6 @@ import (
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
-	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
 	"golang.org/x/crypto/ripemd160"
 )
@@ -40,6 +39,12 @@ type Ranges struct {
 	Ranges []Range `json:"ranges"`
 }
 
+// State struct para armazenar o estado atual do processo
+type State struct {
+	LastCheckedKey string `json:"last_checked_key"`
+	KeysChecked    int    `json:"keys_checked"`
+}
+
 func main() {
 	green := color.New(color.FgGreen).SprintFunc()
 
@@ -57,7 +62,6 @@ func main() {
 
 	// Inicializar privKeyInt com o valor máximo do range selecionado
 	privKeyHex := ranges.Ranges[rangeNumber-1].Max
-
 	privKeyInt := new(big.Int)
 	privKeyInt.SetString(privKeyHex[2:], 16)
 
@@ -67,7 +71,29 @@ func main() {
 		log.Fatalf("Falha ao carregar carteiras: %v", err)
 	}
 
-	keysChecked := 0
+	// Carregar o estado salvo, se existir
+	state, err := loadState("state.json")
+	if err != nil {
+		log.Printf("Não foi possível carregar o estado anterior: %v\n", err)
+	}
+
+	// Se o estado for carregado com sucesso, perguntar ao usuário se deseja continuar de onde parou
+	if state != nil {
+		fmt.Printf("Última chave verificada: %s\n", state.LastCheckedKey)
+		fmt.Printf("Número total de chaves verificadas até agora: %d\n", state.KeysChecked)
+		fmt.Println("Deseja continuar de onde parou? (s/n)")
+
+		reader := bufio.NewReader(os.Stdin)
+		answer, _ := reader.ReadString('\n')
+		answer = strings.TrimSpace(answer)
+		if strings.ToLower(answer) != "s" {
+			state = nil // Iniciar novamente
+		}
+	}
+
+	keysChecked := state.KeysChecked
+	lastCheckedKey := state.LastCheckedKey
+
 	startTime := time.Now()
 
 	// Número de núcleos de CPU a serem utilizados
@@ -111,7 +137,8 @@ func main() {
 				percentageChecked.Mul(percentageChecked, big.NewFloat(100))
 				percentageCheckedFloat, _ := percentageChecked.Float64()
 
-				fmt.Printf("Chaves checadas: %s, Chaves por segundo: %s, Porcentagem checada: %.2f%%\n", humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)), percentageCheckedFloat)
+				fmt.Printf("Chaves checadas: %s, Chaves por segundo: %s, Porcentagem checada: %.2f%%\n",
+					humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)), percentageCheckedFloat)
 
 			case <-done:
 				ticker.Stop()
@@ -122,57 +149,70 @@ func main() {
 
 	// Enviar chaves privadas aos trabalhadores
 	go func() {
+		defer close(privKeyChan)
 		for privKeyInt.Cmp(minKeyInt) >= 0 {
 			privKeyCopy := new(big.Int).Set(privKeyInt)
 			privKeyChan <- privKeyCopy
 			privKeyInt.Sub(privKeyInt, big.NewInt(1))
 			keysChecked++
+			lastCheckedKey = fmt.Sprintf("%064x", privKeyCopy)
 		}
-		close(privKeyChan)
 	}()
 
 	// Aguardar um resultado de qualquer trabalhador
 	var foundAddress *big.Int
-	foundAddress = <-resultChan
-	color.Yellow("Chave privada encontrada: %064x\n", foundAddress)
+	select {
+	case foundAddress = <-resultChan:
+		color.Yellow("Chave privada encontrada: %064x\n", foundAddress)
 
-	// Chave privada encontrada, formatando a saída
-	addressInfo := fmt.Sprintf("Chave privada encontrada: %064x\n", foundAddress)
+		// Chave privada encontrada, formatando a saída
+		addressInfo := fmt.Sprintf("Chave privada encontrada: %064x\n", foundAddress)
 
-	// Calculando a porcentagem
-	percentage := calculatePercentage(foundAddress, minKeyInt, maxKeyInt)
-	fmt.Printf("Porcentagem da chave encontrada: %.2f%%\n", percentage)
+		// Calculando a porcentagem
+		percentage := calculatePercentage(foundAddress, minKeyInt, maxKeyInt)
+		fmt.Printf("Porcentagem da chave encontrada: %.2f%%\n", percentage)
 
-	// Criando um arquivo para registrar a chave encontrada
-	fileName := "Chave_encontrada.txt"
-	file, err := os.Create(fileName)
-	if err != nil {
-		fmt.Println("Erro ao criar o arquivo:", err)
-		return
+		// Criando um arquivo para registrar a chave encontrada
+		fileName := "Chave_encontrada.txt"
+		file, err := os.Create(fileName)
+		if err != nil {
+			fmt.Println("Erro ao criar o arquivo:", err)
+			return
+		}
+		defer file.Close()
+
+		// Escrevendo a informação no arquivo
+		_, err = file.WriteString(fmt.Sprintf("%s\nPorcentagem: %.2f%%\n", addressInfo, percentage))
+		if err != nil {
+			fmt.Println("Erro ao escrever no arquivo:", err)
+			return
+		}
+
+		// Confirmação para o usuário
+		color.Yellow(addressInfo)
+		fmt.Printf("Chave privada encontrada e registrada em %s\n", fileName)
+
+	case <-time.After(time.Minute * 10): // Timeout após 10 minutos
+		fmt.Println("Nenhum endereço encontrado dentro do limite de tempo.")
 	}
-	defer file.Close()
-
-	// Escrevendo a informação no arquivo
-	_, err = file.WriteString(fmt.Sprintf("%s\nPorcentagem: %.2f%%\n", addressInfo, percentage))
-	if err != nil {
-		fmt.Println("Erro ao escrever no arquivo:", err)
-		return
-	}
-
-	// Confirmação para o usuário
-	color.Yellow(addressInfo)
-	fmt.Printf("Chave privada encontrada e registrada em %s\n", fileName)
 
 	// Aguardar todos os trabalhadores terminarem
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
+	wg.Wait()
+	close(done)
+
+	// Salvar o estado atual em um arquivo
+	err = saveState("state.json", lastCheckedKey, keysChecked)
+	if err != nil {
+		fmt.Printf("Erro ao salvar o estado: %v\n", err)
+	}
 
 	elapsedTime := time.Since(startTime).Seconds()
 	keysPerSecond := float64(keysChecked) / elapsedTime
 	checkedKeys := new(big.Int).Sub(maxKeyInt, privKeyInt)
-	percentageChecked := new(big.Float).Quo(new(big.Float).SetInt(checkedKeys), new(big.Float).SetInt(totalKeys))
+	percentageChecked := new(big.Float).Quo(new(big.Float).SetInt(checkedKeys), new(big.Float
+	// Definir o range total para cálculo de porcentagem
+	totalKeys := new(big.Int).Sub(maxKeyInt, minKeyInt)
+
 	percentageChecked.Mul(percentageChecked, big.NewFloat(100))
 	percentageCheckedFloat, _ := percentageChecked.Float64()
 
@@ -182,11 +222,11 @@ func main() {
 	fmt.Printf("Porcentagem checada: %.2f%%\n", percentageCheckedFloat)
 }
 
+// worker é a função que processa cada chave privada
 func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *big.Int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for privKeyInt := range privKeyChan {
 		address := createPublicAddress(privKeyInt)
-		//fmt.Printf("Endereço publico: ", address)
 		if contains(wallets.Addresses, address) {
 			resultChan <- privKeyInt
 			return
@@ -194,6 +234,7 @@ func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *bi
 	}
 }
 
+// createPublicAddress cria um endereço público a partir de uma chave privada
 func createPublicAddress(privKeyInt *big.Int) string {
 	privKeyHex := fmt.Sprintf("%064x", privKeyInt)
 
@@ -210,53 +251,164 @@ func createPublicAddress(privKeyInt *big.Int) string {
 	compressedPubKey := privKey.PubKey().SerializeCompressed()
 
 	// Gerar um endereço Bitcoin a partir da chave pública
-	hash256 := sha256.New()
-	hash256.Write(compressedPubKey)
-	hash160 := ripemd160.New()
-	hash160.Write(hash256.Sum(nil))
-	publicRIPEMD160 := hash160.Sum(nil)
+	pubKeyHash := hash160(compressedPubKey)
+	address := encodeAddress(pubKeyHash, &chaincfg.MainNetParams)
 
-	// Adicionar prefixo de rede e gerar o checksum
-	addressBytes := append([]byte{byte(chaincfg.MainNetParams.PubKeyHashAddrID)}, publicRIPEMD160...)
-	checksum := sha256.Sum256(addressBytes)
-	checksum = sha256.Sum256(checksum[:])
-	addressBytes = append(addressBytes, checksum[:4]...)
-
-	// Codificar o endereço em Base58
-	address := Base58Encode(addressBytes)
 	return address
 }
 
+// hash160 calcula o hash RIPEMD160(SHA256(b))
+func hash160(b []byte) []byte {
+	h := sha256.New()
+	h.Write(b)
+	sha256Hash := h.Sum(nil)
+
+	r := ripemd160.New()
+	r.Write(sha256Hash)
+	return r.Sum(nil)
+}
+
+// encodeAddress codifica o hash da chave pública em um endereço Bitcoin
+func encodeAddress(pubKeyHash []byte, params *chaincfg.Params) string {
+	versionedPayload := append([]byte{params.PubKeyHashAddrID}, pubKeyHash...)
+	checksum := doubleSha256(versionedPayload)[:4]
+	fullPayload := append(versionedPayload, checksum...)
+	return base58Encode(fullPayload)
+}
+
+// doubleSha256 calcula SHA256(SHA256(b))
+func doubleSha256(b []byte) []byte {
+	first := sha256.Sum256(b)
+	second := sha256.Sum256(first[:])
+	return second[:]
+}
+
+// base58Encode codifica um slice de bytes em uma string codificada em base58
+var base58Alphabet = []byte("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
+
+func base58Encode(input []byte) string {
+	var result []byte
+	x := new(big.Int).SetBytes(input)
+
+	base := big.NewInt(int64(len(base58Alphabet)))
+	zero := big.NewInt(0)
+	mod := &big.Int{}
+
+	for x.Cmp(zero) != 0 {
+		x.DivMod(x, base, mod)
+		result = append(result, base58Alphabet[mod.Int64()])
+	}
+
+	// Inverter o resultado
+	for i, j := 0, len(result)-1; i < j; i, j = i+1, j-1 {
+		result[i], result[j] = result[j], result[i]
+	}
+
+	// Adicionar zeros à esquerda
+	for _, b := range input {
+		if b != 0 {
+			break
+		}
+		result = append([]byte{base58Alphabet[0]}, result...)
+	}
+
+	return string(result)
+}
+
+// loadWallets carrega endereços de carteiras de um arquivo JSON
 func loadWallets(filename string) (*Wallets, error) {
-	data, err := ioutil.ReadFile(filename)
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	bytes, err := ioutil.ReadAll(file)
 	if err != nil {
 		return nil, err
 	}
 
 	var wallets Wallets
-	err = json.Unmarshal(data, &wallets)
-	if err != nil {
+	if err := json.Unmarshal(bytes, &wallets); err != nil {
 		return nil, err
 	}
 
 	return &wallets, nil
 }
 
+// contains verifica se uma string está em um slice de strings
+func contains(slice []string, item string) bool {
+	for _, a := range slice {
+		if a == item {
+			return true
+		}
+	}
+	return false
+}
+
+// loadRanges carrega ranges de um arquivo JSON
 func loadRanges(filename string) (*Ranges, error) {
-	data, err := ioutil.ReadFile(filename)
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	bytes, err := ioutil.ReadAll(file)
 	if err != nil {
 		return nil, err
 	}
 
 	var ranges Ranges
-	err = json.Unmarshal(data, &ranges)
-	if err != nil {
+	if err := json.Unmarshal(bytes, &ranges); err != nil {
 		return nil, err
 	}
 
 	return &ranges, nil
 }
 
+// loadState carrega o estado atual do processo de um arquivo JSON
+func loadState(filename string) (*State, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	bytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	var state State
+	if err := json.Unmarshal(bytes, &state); err != nil {
+		return nil, err
+	}
+
+	return &state, nil
+}
+
+// saveState salva o estado atual do processo em um arquivo JSON
+func saveState(filename string, lastCheckedKey string, keysChecked int) error {
+	state := State{
+		LastCheckedKey: lastCheckedKey,
+		KeysChecked:    keysChecked,
+	}
+
+	data, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(filename, data, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// promptRangeNumber solicita ao usuário que selecione um número de range
 func promptRangeNumber(totalRanges int) int {
 	reader := bufio.NewReader(os.Stdin)
 	charReadline := '\n'
@@ -277,6 +429,7 @@ func promptRangeNumber(totalRanges int) int {
 	}
 }
 
+// calculatePercentage calcula a porcentagem da chave privada encontrada dentro do range
 func calculatePercentage(privKeyInt, minKeyInt, maxKeyInt *big.Int) float64 {
 	totalRange := new(big.Int).Sub(maxKeyInt, minKeyInt)
 	foundPosition := new(big.Int).Sub(privKeyInt, minKeyInt)
@@ -289,35 +442,4 @@ func calculatePercentage(privKeyInt, minKeyInt, maxKeyInt *big.Int) float64 {
 
 	percentageFloat, _ := percentage.Float64()
 	return percentageFloat
-}
-
-func contains(slice []string, item string) bool {
-	for _, a := range slice {
-		if a == item {
-			return true
-		}
-	}
-	return false
-}
-
-// Base58Encode encodes a byte slice to a Base58 encoded string.
-func Base58Encode(input []byte) string {
-	const base58Alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-	x := new(big.Int).SetBytes(input)
-	base := big.NewInt(int64(len(base58Alphabet)))
-	zero := big.NewInt(0)
-	mod := &big.Int{}
-	result := make([]byte, 0, len(input)*136/100)
-
-	for x.Cmp(zero) > 0 {
-		x.DivMod(x, base, mod)
-		result = append(result, base58Alphabet[mod.Int64()])
-	}
-
-	// Reverse result
-	for i, j := 0, len(result)-1; i < j; i, j = i+1, j-1 {
-		result[i], result[j] = result[j], result[i]
-	}
-
-	return string(result)
 }
