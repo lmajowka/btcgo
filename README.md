@@ -20,6 +20,6 @@ Para rodar o projeto, execute os seguintes comandos no terminal:
  * Instale as dependências:
  ``` go mod tidy ```
  * Compile o projeto:
- ``` go build -o btcgo ```
+ ``` go build -o btcgo ./src ```
  * Rode o compilado:
  ``` ./btcgo ```
