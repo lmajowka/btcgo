@@ -175,7 +175,6 @@ func base58Encode(input []byte) string {
 	return string(result)
 }
 
-// loadWallets carrega endereços de carteiras de um arquivo JSON
 func loadWallets(filename string) (*Wallets, error) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -194,6 +193,26 @@ func loadWallets(filename string) (*Wallets, error) {
 	}
 
 	return &wallets, nil
+}
+
+func loadRanges(filename string) (*Ranges, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	bytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	var ranges Ranges
+	if err := json.Unmarshal(bytes, &ranges); err != nil {
+		return nil, err
+	}
+
+	return &ranges, nil
 }
 
 // contains verifica se uma string está em um slice de strings
