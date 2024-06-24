@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"os"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
@@ -35,7 +37,14 @@ func main() {
 
 	green := color.New(color.FgGreen).SprintFunc()
 
-	ranges, err := LoadRanges("../data/ranges.json")
+	exePath, err := os.Executable()
+	if err != nil {
+		fmt.Printf("Erro ao obter o caminho do executável: %v\n", err)
+		return
+	}
+	rootDir := filepath.Dir(exePath)
+
+	ranges, err := LoadRanges(filepath.Join(rootDir, "data", "ranges.json"))
 	if err != nil {
 		log.Fatalf("Failed to load ranges: %v", err)
 	}
@@ -53,7 +62,7 @@ func main() {
 	privKeyInt.SetString(privKeyHex[2:], 16)
 
 	// Load wallet addresses from JSON file
-	wallets, err := LoadWallets("../data/wallets.json")
+	wallets, err := LoadWallets(filepath.Join(rootDir, "data", "wallets.json"))
 	if err != nil {
 		log.Fatalf("Failed to load wallets: %v", err)
 	}
