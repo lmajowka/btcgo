@@ -21,3 +21,6 @@ vendor/
 
 # Ignore go build output
 bin/
+
+# Ignore the executable
+btcgo

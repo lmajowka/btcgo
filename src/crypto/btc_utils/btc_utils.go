@@ -1,7 +1,7 @@
-package main
+package btc_utils
 
 import (
-	"btcgo/crypto/base58"
+	"btcgo/src/crypto/base58"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -40,7 +40,7 @@ func GenerateWif(privKeyInt *big.Int) string {
 	return wif
 }
 
-func createPublicHash160(privKeyInt *big.Int) []byte {
+func CreatePublicHash160(privKeyInt *big.Int) []byte {
 
 	privKeyHex := fmt.Sprintf("%064x", privKeyInt)
 

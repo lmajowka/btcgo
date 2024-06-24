@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"btcgo/src/crypto/btc_utils"
+
 	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
 )
@@ -38,8 +40,8 @@ func main() {
 		log.Fatalf("Failed to load ranges: %v", err)
 	}
 
-	color.Cyan("BTCGO - Investidor Internacional")
-	color.White("v0.1")
+	color.Cyan("BTC GO - Investidor Internacional")
+	color.White("v0.2")
 
 	// Ask the user for the range number
 	rangeNumber := PromptRangeNumber(len(ranges.Ranges))
@@ -111,7 +113,7 @@ func main() {
 	select {
 	case foundAddress = <-resultChan:
 		color.Yellow("Chave privada encontrada: %064x\n", foundAddress)
-		color.Yellow("WIF: %s", GenerateWif(foundAddress))
+		color.Yellow("WIF: %s", btc_utils.GenerateWif(foundAddress))
 		// close(resultChan)
 	case <-time.After(time.Minute * 10): // Optional: Timeout after 1 minute
 		fmt.Println("No address found within the time limit.")
@@ -134,7 +136,7 @@ func main() {
 func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *big.Int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for privKeyInt := range privKeyChan {
-		address := createPublicHash160(privKeyInt)
+		address := btc_utils.CreatePublicHash160(privKeyInt)
 		if Contains(wallets.Addresses, address) {
 			resultChan <- privKeyInt
 			return

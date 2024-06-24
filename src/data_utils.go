@@ -1,7 +1,7 @@
 package main
 
 import (
-	"btcgo/crypto/base58"
+	"btcgo/src/crypto/base58"
 	"bufio"
 	"bytes"
 	"encoding/json"
