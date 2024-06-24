@@ -24,6 +24,23 @@ Se liga no esquema pra rodar o bagulho:
  * Executa o que foi compilado:
  ``` ./btcgo ```
 
+## Execução do corre - Windows
+
+Se liga no esquema pra rodar o bagulho:
+
+ * Clona o repo:
+  ``` git clone git@github.com:lmajowka/btcgo.git ```
+ * Brota na pasta do projeto:
+  ``` cd btcgo ```
+ * Instala as parada:
+ ``` go mod tidy ```
+ * Faz o build do projeto:
+ ``` go build -o btcgo.exe ./src ```
+ * Executa o que foi compilado:
+ ``` ./btcgo.exe ou clicar no executavel ```
+
+
 Aí é só seguir o baile, parceiro.
+ 
  
 
