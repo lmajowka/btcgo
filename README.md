@@ -9,17 +9,21 @@
 ## Links para instalação
     * GO: https://go.dev/doc/install
 
-## Execução do projeto
+## Execução do corre
 
-Para rodar o projeto, execute os seguintes comandos no terminal:
+Se liga no esquema pra rodar o bagulho:
 
- * Clone o repositório:
+ * Clona o repo:
   ``` git clone git@github.com:lmajowka/btcgo.git ```
- * Entre na pasta do projeto:
+ * Cola dentro da pasta do projeto:
   ``` cd btcgo ```
- * Instale as dependências:
+ * Instala as parada:
  ``` go mod tidy ```
- * Compile o projeto:
+ * Faz o build do projeto:
  ``` go build -o btcgo ./src ```
- * Rode o compilado:
+ * Executa o que foi compilado:
  ``` ./btcgo ```
+ 
+Aí é só seguir o baile, parceiro.
+ 
+
