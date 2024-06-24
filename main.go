@@ -171,7 +171,7 @@ func main() {
 		// Confirmação para o usuário
 		color.Yellow(addressInfo)
 		fmt.Println("Chave privada encontrada e registrada em", fileName)
-	case <-time.After(time.Minute * 10): // Opcional: Timeout após 10 minutos
+	case <-time.After(time.Minute * 10000): // Opcional: Timeout após 10 minutos
 		fmt.Println("Nenhum endereço encontrado dentro do limite de tempo.")
 	}
 

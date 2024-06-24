@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -9,10 +8,8 @@ import (
 	"io/ioutil"
 	"log"
 	"math/big"
-	"math/rand"
 	"os"
 	"runtime"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -24,61 +21,23 @@ import (
 	"golang.org/x/crypto/ripemd160"
 )
 
-// Wallets struct para armazenar o array de endereços de carteiras
 type Wallets struct {
 	Addresses []string `json:"wallets"`
-}
-
-// Range struct para armazenar o mínimo, máximo e status
-type Range struct {
-	Min    string `json:"min"`
-	Max    string `json:"max"`
-	Status int    `json:"status"`
-}
-
-// Ranges struct para armazenar um array de ranges
-type Ranges struct {
-	Ranges []Range `json:"ranges"`
 }
 
 func main() {
 	green := color.New(color.FgGreen).SprintFunc()
 
-	// Carregar ranges do arquivo JSON
-	ranges, err := loadRanges("ranges.json")
-	if err != nil {
-		log.Fatalf("Falha ao carregar ranges: %v", err)
-	}
-
-	color.Cyan("BTCGO - Investidor Internacional")
-	color.White("v0.1")
-
-	// Perguntar ao usuário o número do range
-	rangeNumber := promptRangeNumber(len(ranges.Ranges))
-
-	// Perguntar ao usuário os limites do intervalo
-	lowerPercent, upperPercent := promptRangeLimits()
-
-	// Inicializar privKeyInt com o valor máximo do range selecionado
-	privKeyHex := ranges.Ranges[rangeNumber-1].Max
-
-	privKeyInt := new(big.Int)
-	privKeyInt.SetString(privKeyHex[2:], 16)
-
-	// Calcular os limites baseados nas porcentagens fornecidas
-	minKeyInt := new(big.Int)
-	minKeyInt.SetString(ranges.Ranges[rangeNumber-1].Min[2:], 16)
-
-	totalRange := new(big.Int).Sub(privKeyInt, minKeyInt)
-	upperLimit := new(big.Int).Div(new(big.Int).Mul(totalRange, big.NewInt(int64(upperPercent))), big.NewInt(100))
-	lowerLimit := new(big.Int).Div(new(big.Int).Mul(totalRange, big.NewInt(int64(lowerPercent))), big.NewInt(100))
-	upperLimit.Add(upperLimit, minKeyInt)
-	lowerLimit.Add(lowerLimit, minKeyInt)
-
 	// Carregar endereços de carteira do arquivo JSON
 	wallets, err := loadWallets("wallets.json")
 	if err != nil {
 		log.Fatalf("Falha ao carregar carteiras: %v", err)
+	}
+
+	// Carregar chaves privadas geradas do arquivo JSON
+	keys, err := loadGeneratedKeys("keys.json")
+	if err != nil {
+		log.Fatalf("Falha ao carregar chaves geradas: %v", err)
 	}
 
 	keysChecked := 0
@@ -89,97 +48,44 @@ func main() {
 	fmt.Printf("CPUs detectados: %s\n", green(numCPU))
 	runtime.GOMAXPROCS(numCPU * 2)
 
-	// Criar um canal para enviar chaves privadas aos trabalhadores
-	privKeyChan := make(chan *big.Int)
-	// Criar um canal para receber resultados dos trabalhadores
-	resultChan := make(chan *big.Int)
-	// Criar um grupo de espera para aguardar todos os trabalhadores terminarem
 	var wg sync.WaitGroup
 
-	// Iniciar goroutines de trabalhadores
-	for i := 0; i < numCPU*2; i++ {
+	for _, key := range keys {
 		wg.Add(1)
-		go worker(wallets, privKeyChan, resultChan, &wg)
-	}
+		go func(privKeyInt *big.Int) {
+			defer wg.Done()
+			address := createPublicAddress(privKeyInt)
+			if contains(wallets.Addresses, address) {
+				color.Yellow("Chave privada encontrada: %064x\n", privKeyInt)
 
-	// Ticker para atualizações periódicas a cada 5 segundos
-	ticker := time.NewTicker(5 * time.Second)
-	done := make(chan bool)
+				// Chave privada encontrada, formatando a saída
+				addressInfo := fmt.Sprintf("Chave privada encontrada: %064x\n", privKeyInt)
 
-	// Goroutine para imprimir atualizações de velocidade
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				elapsedTime := time.Since(startTime).Seconds()
-				keysPerSecond := float64(keysChecked) / elapsedTime
-				fmt.Printf("Chaves checadas: %s, Chaves por segundo: %s\n", humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
+				// Criando um arquivo para registrar a chave encontrada
+				fileName := "Chave_encontrada.txt"
+				file, err := os.Create(fileName)
+				if err != nil {
+					fmt.Println("Erro ao criar o arquivo:", err)
+					return
+				}
+				defer file.Close()
 
-			case <-done:
-				ticker.Stop()
-				return
+				// Escrevendo a informação no arquivo
+				_, err = file.WriteString(addressInfo)
+				if err != nil {
+					fmt.Println("Erro ao escrever no arquivo:", err)
+					return
+				}
+
+				// Confirmação para o usuário
+				color.Yellow(addressInfo)
+				fmt.Println("Chave privada encontrada e registrada em", fileName)
 			}
-		}
-	}()
-
-	// Armazenar chaves já geradas para evitar duplicatas
-	usedKeys := make(map[string]struct{})
-
-	// Enviar chaves privadas aos trabalhadores
-	go func() {
-		rand.Seed(time.Now().UnixNano())
-		for {
-			randomKey := new(big.Int).Rand(rand.New(rand.NewSource(time.Now().UnixNano())), new(big.Int).Sub(upperLimit, lowerLimit))
-			randomKey.Add(randomKey, lowerLimit)
-
-			if _, exists := usedKeys[randomKey.String()]; exists {
-				continue
-			}
-
-			usedKeys[randomKey.String()] = struct{}{}
-			privKeyChan <- randomKey
 			keysChecked++
-		}
-		close(privKeyChan)
-	}()
-
-	// Aguardar um resultado de qualquer trabalhador
-	var foundAddress *big.Int
-	select {
-	case foundAddress = <-resultChan:
-		color.Yellow("Chave privada encontrada: %064x\n", foundAddress)
-
-		// Chave privada encontrada, formatando a saída
-		addressInfo := fmt.Sprintf("Chave privada encontrada: %064x\n", foundAddress)
-
-		// Criando um arquivo para registrar a chave encontrada
-		fileName := "Chave_encontrada.txt"
-		file, err := os.Create(fileName)
-		if err != nil {
-			fmt.Println("Erro ao criar o arquivo:", err)
-			return
-		}
-		defer file.Close()
-
-		// Escrevendo a informação no arquivo
-		_, err = file.WriteString(addressInfo)
-		if err != nil {
-			fmt.Println("Erro ao escrever no arquivo:", err)
-			return
-		}
-
-		// Confirmação para o usuário
-		color.Yellow(addressInfo)
-		fmt.Println("Chave privada encontrada e registrada em", fileName)
-	case <-time.After(time.Minute * 10): // Opcional: Timeout após 10 minutos
-		fmt.Println("Nenhum endereço encontrado dentro do limite de tempo.")
+		}(key)
 	}
 
-	// Aguardar todos os trabalhadores terminarem
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
+	wg.Wait()
 
 	elapsedTime := time.Since(startTime).Seconds()
 	keysPerSecond := float64(keysChecked) / elapsedTime
@@ -187,17 +93,6 @@ func main() {
 	fmt.Printf("Chaves checadas: %s\n", humanize.Comma(int64(keysChecked)))
 	fmt.Printf("Tempo: %.2f segundos\n", elapsedTime)
 	fmt.Printf("Chaves por segundo: %s\n", humanize.Comma(int64(keysPerSecond)))
-}
-
-func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *big.Int, wg *sync.WaitGroup) {
-	defer wg.Done()
-	for privKeyInt := range privKeyChan {
-		address := createPublicAddress(privKeyInt)
-		if contains(wallets.Addresses, address) {
-			resultChan <- privKeyInt
-			return
-		}
-	}
 }
 
 func createPublicAddress(privKeyInt *big.Int) string {
@@ -311,81 +206,30 @@ func contains(slice []string, item string) bool {
 	return false
 }
 
-// loadRanges carrega ranges de um arquivo JSON
-func loadRanges(filename string) (*Ranges, error) {
+// loadGeneratedKeys carrega chaves geradas de um arquivo JSON
+func loadGeneratedKeys(filename string) ([]*big.Int, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
+	var keysList []string
 	bytes, err := ioutil.ReadAll(file)
 	if err != nil {
 		return nil, err
 	}
 
-	var ranges Ranges
-	if err := json.Unmarshal(bytes, &ranges); err != nil {
+	if err := json.Unmarshal(bytes, &keysList); err != nil {
 		return nil, err
 	}
 
-	return &ranges, nil
-}
-
-// promptRangeNumber solicita ao usuário que selecione um número de range
-func promptRangeNumber(totalRanges int) int {
-	reader := bufio.NewReader(os.Stdin)
-	charReadline := '\n'
-
-	if runtime.GOOS == "windows" {
-		charReadline = '\r'
+	keys := make([]*big.Int, len(keysList))
+	for i, key := range keysList {
+		keyInt := new(big.Int)
+		keyInt.SetString(strings.TrimPrefix(key, "0x"), 16)
+		keys[i] = keyInt
 	}
 
-	for {
-		fmt.Printf("Escolha a carteira (1 a %d): ", totalRanges)
-		input, _ := reader.ReadString(byte(charReadline))
-		input = strings.TrimSpace(input)
-		rangeNumber, err := strconv.Atoi(input)
-		if err == nil && rangeNumber >= 1 && rangeNumber <= totalRanges {
-			return rangeNumber
-		}
-		fmt.Println("Número inválido.")
-	}
-}
-
-// promptRangeLimits solicita ao usuário que selecione os limites inferior e superior do intervalo
-func promptRangeLimits() (int, int) {
-	reader := bufio.NewReader(os.Stdin)
-	charReadline := '\n'
-
-	if runtime.GOOS == "windows" {
-		charReadline = '\r'
-	}
-
-	var lowerPercent, upperPercent int
-	for {
-		fmt.Printf("Escolha o limite inferior do intervalo (em porcentagem, 0 a 100): ")
-		input, _ := reader.ReadString(byte(charReadline))
-		input = strings.TrimSpace(input)
-		percent, err := strconv.Atoi(input)
-		if err == nil && percent >= 0 && percent <= 100 {
-			lowerPercent = percent
-			break
-		}
-		fmt.Println("Porcentagem inválida.")
-	}
-
-	for {
-		fmt.Printf("Escolha o limite superior do intervalo (em porcentagem, %d a 100): ", lowerPercent)
-		input, _ := reader.ReadString(byte(charReadline))
-		input = strings.TrimSpace(input)
-		percent, err := strconv.Atoi(input)
-		if err == nil && percent >= lowerPercent && percent <= 100 {
-			upperPercent = percent
-			break
-		}
-		fmt.Println("Porcentagem inválida.")
-	}
-
-	return lowerPercent, upperPercent
+	return keys, nil
 }
