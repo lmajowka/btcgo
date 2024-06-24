@@ -114,9 +114,7 @@ func main() {
 	case foundAddress = <-resultChan:
 		color.Yellow("Chave privada encontrada: %064x\n", foundAddress)
 		color.Yellow("WIF: %s", btc_utils.GenerateWif(foundAddress))
-		// close(resultChan)
-	case <-time.After(time.Minute * 10): // Optional: Timeout after 1 minute
-		fmt.Println("No address found within the time limit.")
+		close(privKeyChan)
 	}
 
 	// Wait for all workers to finish
