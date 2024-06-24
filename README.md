@@ -15,7 +15,7 @@ Se liga no esquema pra rodar o bagulho:
 
  * Clona o repo:
   ``` git clone git@github.com:lmajowka/btcgo.git ```
- * Cola dentro da pasta do projeto:
+ * Brota na pasta do projeto:
   ``` cd btcgo ```
  * Instala as parada:
  ``` go mod tidy ```
@@ -23,7 +23,7 @@ Se liga no esquema pra rodar o bagulho:
  ``` go build -o btcgo ./src ```
  * Executa o que foi compilado:
  ``` ./btcgo ```
- 
+
 Aí é só seguir o baile, parceiro.
  
 
