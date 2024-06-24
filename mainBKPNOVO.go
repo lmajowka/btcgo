@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"math/big"
+	"math/rand"
 	"os"
 	"runtime"
 	"strconv"
@@ -55,11 +56,24 @@ func main() {
 	// Perguntar ao usuário o número do range
 	rangeNumber := promptRangeNumber(len(ranges.Ranges))
 
+	// Perguntar ao usuário os limites do intervalo
+	lowerPercent, upperPercent := promptRangeLimits()
+
 	// Inicializar privKeyInt com o valor máximo do range selecionado
 	privKeyHex := ranges.Ranges[rangeNumber-1].Max
 
 	privKeyInt := new(big.Int)
 	privKeyInt.SetString(privKeyHex[2:], 16)
+
+	// Calcular os limites baseados nas porcentagens fornecidas
+	minKeyInt := new(big.Int)
+	minKeyInt.SetString(ranges.Ranges[rangeNumber-1].Min[2:], 16)
+
+	totalRange := new(big.Int).Sub(privKeyInt, minKeyInt)
+	upperLimit := new(big.Int).Div(new(big.Int).Mul(totalRange, big.NewInt(int64(upperPercent))), big.NewInt(100))
+	lowerLimit := new(big.Int).Div(new(big.Int).Mul(totalRange, big.NewInt(int64(lowerPercent))), big.NewInt(100))
+	upperLimit.Add(upperLimit, minKeyInt)
+	lowerLimit.Add(lowerLimit, minKeyInt)
 
 	// Carregar endereços de carteira do arquivo JSON
 	wallets, err := loadWallets("wallets.json")
@@ -108,14 +122,22 @@ func main() {
 		}
 	}()
 
+	// Armazenar chaves já geradas para evitar duplicatas
+	usedKeys := make(map[string]struct{})
+
 	// Enviar chaves privadas aos trabalhadores
 	go func() {
-		minKeyInt := new(big.Int)
-		minKeyInt.SetString(ranges.Ranges[rangeNumber-1].Min[2:], 16)
-		for privKeyInt.Cmp(minKeyInt) >= 0 {
-			privKeyCopy := new(big.Int).Set(privKeyInt)
-			privKeyChan <- privKeyCopy
-			privKeyInt.Sub(privKeyInt, big.NewInt(1))
+		rand.Seed(time.Now().UnixNano())
+		for {
+			randomKey := new(big.Int).Rand(rand.New(rand.NewSource(time.Now().UnixNano())), new(big.Int).Sub(upperLimit, lowerLimit))
+			randomKey.Add(randomKey, lowerLimit)
+
+			if _, exists := usedKeys[randomKey.String()]; exists {
+				continue
+			}
+
+			usedKeys[randomKey.String()] = struct{}{}
+			privKeyChan <- randomKey
 			keysChecked++
 		}
 		close(privKeyChan)
@@ -149,7 +171,7 @@ func main() {
 		// Confirmação para o usuário
 		color.Yellow(addressInfo)
 		fmt.Println("Chave privada encontrada e registrada em", fileName)
-	case <-time.After(time.Minute * 10000000): // Opcional: Timeout após 10 minutos
+	case <-time.After(time.Minute * 10): // Opcional: Timeout após 10 minutos
 		fmt.Println("Nenhum endereço encontrado dentro do limite de tempo.")
 	}
 
@@ -329,4 +351,41 @@ func promptRangeNumber(totalRanges int) int {
 		}
 		fmt.Println("Número inválido.")
 	}
+}
+
+// promptRangeLimits solicita ao usuário que selecione os limites inferior e superior do intervalo
+func promptRangeLimits() (int, int) {
+	reader := bufio.NewReader(os.Stdin)
+	charReadline := '\n'
+
+	if runtime.GOOS == "windows" {
+		charReadline = '\r'
+	}
+
+	var lowerPercent, upperPercent int
+	for {
+		fmt.Printf("Escolha o limite inferior do intervalo (em porcentagem, 0 a 100): ")
+		input, _ := reader.ReadString(byte(charReadline))
+		input = strings.TrimSpace(input)
+		percent, err := strconv.Atoi(input)
+		if err == nil && percent >= 0 && percent <= 100 {
+			lowerPercent = percent
+			break
+		}
+		fmt.Println("Porcentagem inválida.")
+	}
+
+	for {
+		fmt.Printf("Escolha o limite superior do intervalo (em porcentagem, %d a 100): ", lowerPercent)
+		input, _ := reader.ReadString(byte(charReadline))
+		input = strings.TrimSpace(input)
+		percent, err := strconv.Atoi(input)
+		if err == nil && percent >= lowerPercent && percent <= 100 {
+			upperPercent = percent
+			break
+		}
+		fmt.Println("Porcentagem inválida.")
+	}
+
+	return lowerPercent, upperPercent
 }

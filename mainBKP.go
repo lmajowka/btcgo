@@ -55,6 +55,24 @@ func main() {
 	// Ask the user for the range number
 	rangeNumber := promptRangeNumber(len(ranges.Ranges))
 
+	// Inicializar privKeyInt com o valor mínimo e máximo do range selecionado
+	minKeyHex := ranges.Ranges[rangeNumber-1].Min
+	maxKeyHex := ranges.Ranges[rangeNumber-1].Max
+
+	minKeyInt := new(big.Int)
+	minKeyInt.SetString(minKeyHex[2:], 16)
+
+	maxKeyInt := new(big.Int)
+	maxKeyInt.SetString(maxKeyHex[2:], 16)
+
+	// Calcular o intervalo de 1%
+	rangeDiff := new(big.Int).Sub(maxKeyInt, minKeyInt)
+	onePercentRange := new(big.Int).Div(rangeDiff, big.NewInt(100))
+
+	fmt.Printf("Prcentagem: %v", onePercentRange)
+
+	// Ask the user for the range number
+
 	// Initialize privKeyInt with the minimum value of the selected range
 	privKeyHex := ranges.Ranges[rangeNumber-1].Min
 
@@ -91,7 +109,7 @@ func main() {
 	// Ticker for periodic updates every 5 seconds
 	ticker := time.NewTicker(5 * time.Second)
 	done := make(chan bool)
-
+	setor := 0
 	// Goroutine to print speed updates
 	go func() {
 		for {
@@ -99,6 +117,7 @@ func main() {
 			case <-ticker.C:
 				elapsedTime := time.Since(startTime).Seconds()
 				keysPerSecond := float64(keysChecked) / elapsedTime
+				fmt.Printf("Processando setor %d\n", setor)
 				fmt.Printf("Chaves checadas: %s, Chaves por segundo: %s\n", humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
 			case <-done:
 				ticker.Stop()
@@ -117,10 +136,34 @@ func main() {
 		}
 		close(privKeyChan)
 	}()
+
+	go func() {
+		for i := 0; i < 100; i++ {
+			sectorStart := new(big.Int).Add(minKeyInt, new(big.Int).Mul(onePercentRange, big.NewInt(int64(i))))
+			sectorEnd := new(big.Int).Add(sectorStart, onePercentRange)
+
+			// Imprime o setor atual
+			fmt.Printf("Processando setor %d\n", i)
+			setor = i
+			for sectorStart.Cmp(sectorEnd) < 0 {
+				privKeyCopy := new(big.Int).Set(sectorStart)
+				privKeyChan <- privKeyCopy
+				sectorStart.Add(sectorStart, big.NewInt(1))
+				keysChecked++
+			}
+
+			time.Sleep(3 * time.Second) // Avançar para o próximo setor após 3 segundos
+		}
+
+		close(privKeyChan)
+	}()
+
 	// Wait for a result from any worker
 	var foundAddress *big.Int
 	select {
 	case foundAddress = <-resultChan:
+		// Imprime o setor atual
+
 		color.Yellow("Chave privada encontrada: %064x\n", foundAddress)
 		// close(resultChan)
 	case <-time.After(time.Minute * 10): // Optional: Timeout after 1 minute
