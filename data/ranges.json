@@ -65,7 +65,7 @@
         { "min": "0x4000000000000000", "max": "0x7fffffffffffffff", "status": 1 },
         { "min": "0x8000000000000000", "max": "0xffffffffffffffff", "status": 1 },
         { "min": "0x10000000000000000", "max": "0x1ffffffffffffffff", "status": 1 },
-        { "min": "0x20000000000000000", "max": "0x3ffffffffffffffff", "status": 0 },
+        { "min": "0x29ab001d7f3104000", "max": "0x3ffffffffffffffff", "status": 0 },
         { "min": "0x40000000000000000", "max": "0x7ffffffffffffffff", "status": 0 },
         { "min": "0x80000000000000000", "max": "0xfffffffffffffffff", "status": 0 },
         { "min": "0x100000000000000000", "max": "0x1fffffffffffffffff", "status": 0 },
@@ -160,6 +160,6 @@
         { "min": "0x2000000000000000000000000000000000000000", "max": "0x3fffffffffffffffffffffffffffffffffffffff", "status": 0 },
         { "min": "0x4000000000000000000000000000000000000000", "max": "0x7fffffffffffffffffffffffffffffffffffffff", "status": 0 },
         { "min": "0x8000000000000000000000000000000000000000", "max": "0xffffffffffffffffffffffffffffffffffffffff", "status": 0 },
-        { "min": "0xC0DE000000000000000000000000000000000000000000003270000000000000", "max": "0xC0DE00000000000000000000000000000000000000000000327fffffffffffff", "status": 0 }
+        { "min": "0xC0DE000000000000000000000000000000000000000000003270000000000000", "max": "0xC0DE00000000000000000000000000000000000000000000327fffffffffffff", "status": 1 }
     ]
 }

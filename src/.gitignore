@@ -1,0 +1,23 @@
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# IDE/editor directories and files
+.vscode/
+.idea/
+*.swp
+*~
+
+# Dependency directories (example for vendoring)
+vendor/
+
+# Logs
+*.log
+
+# Ignore go build output
+bin/
