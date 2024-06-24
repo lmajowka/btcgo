@@ -25,6 +25,18 @@ type Wallets struct {
 	Addresses []string `json:"wallets"`
 }
 
+// Range representa um intervalo com um mínimo, máximo e status
+type Range struct {
+	Min    string `json:"min"`
+	Max    string `json:"max"`
+	Status int    `json:"status"`
+}
+
+// Ranges representa um conjunto de ranges
+type Ranges struct {
+	Ranges []Range `json:"ranges"`
+}
+
 func main() {
 	green := color.New(color.FgGreen).SprintFunc()
 
