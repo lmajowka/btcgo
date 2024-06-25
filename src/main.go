@@ -34,7 +34,6 @@ type Ranges struct {
 }
 
 func main() {
-
 	green := color.New(color.FgGreen).SprintFunc()
 
 	exePath, err := os.Executable()
@@ -78,7 +77,7 @@ func main() {
 	runtime.GOMAXPROCS(numCPU * 2)
 
 	// Create a channel to send private keys to workers
-	privKeyChan := make(chan *big.Int)
+	privKeyChan := make(chan *big.Int, numCPU*2)
 	// Create a channel to receive results from workers
 	resultChan := make(chan *big.Int)
 	// Create a wait group to wait for all workers to finish
@@ -92,7 +91,8 @@ func main() {
 
 	// Ticker for periodic updates every 5 seconds
 	ticker := time.NewTicker(5 * time.Second)
-	done := make(chan bool)
+	defer ticker.Stop()
+	done := make(chan struct{})
 
 	// Goroutine to print speed updates
 	go func() {
@@ -103,7 +103,6 @@ func main() {
 				keysPerSecond := float64(keysChecked) / elapsedTime
 				fmt.Printf("Chaves checadas: %s, Chaves por segundo: %s\n", humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
 			case <-done:
-				ticker.Stop()
 				return
 			}
 		}
@@ -111,13 +110,17 @@ func main() {
 
 	// Send private keys to the workers
 	go func() {
-		for i := 1; i < 2; {
+		defer close(privKeyChan)
+		for {
 			privKeyCopy := new(big.Int).Set(privKeyInt)
-			privKeyChan <- privKeyCopy
-			privKeyInt.Add(privKeyInt, big.NewInt(1))
-			keysChecked++
+			select {
+			case privKeyChan <- privKeyCopy:
+				privKeyInt.Add(privKeyInt, big.NewInt(1))
+				keysChecked++
+			case <-done:
+				return
+			}
 		}
-		close(privKeyChan)
 	}()
 
 	// Wait for a result from any worker
@@ -126,6 +129,7 @@ func main() {
 	case foundAddress = <-resultChan:
 		wif := btc_utils.GenerateWif(foundAddress)
 		color.Yellow("Chave privada encontrada: %064x\n", foundAddress)
+<<<<<<< HEAD
 		color.Yellow("WIF: %s", wif)
 
 	// Obter a data e horário atuais
@@ -146,13 +150,14 @@ func main() {
 	}
 
 		close(privKeyChan)
+=======
+		color.Yellow("WIF: %s", btc_utils.GenerateWif(foundAddress))
+		close(done)
+>>>>>>> a13c18a228480bb9694b7ab15fe4c53ddd636e8f
 	}
 
 	// Wait for all workers to finish
-	go func() {
-		wg.Wait()
-		close(privKeyChan)
-	}()
+	wg.Wait()
 
 	elapsedTime := time.Since(startTime).Seconds()
 	keysPerSecond := float64(keysChecked) / elapsedTime
@@ -168,8 +173,12 @@ func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *bi
 	for privKeyInt := range privKeyChan {
 		address := btc_utils.CreatePublicHash160(privKeyInt)
 		if Contains(wallets.Addresses, address) {
-			resultChan <- privKeyInt
-			return
+			select {
+			case resultChan <- privKeyInt:
+				return
+			default:
+				return
+			}
 		}
 	}
 }
