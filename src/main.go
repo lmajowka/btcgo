@@ -129,7 +129,6 @@ func main() {
 	case foundAddress = <-resultChan:
 		wif := btc_utils.GenerateWif(foundAddress)
 		color.Yellow("Chave privada encontrada: %064x\n", foundAddress)
-<<<<<<< HEAD
 		color.Yellow("WIF: %s", wif)
 
 	// Obter a data e horário atuais
@@ -150,10 +149,6 @@ func main() {
 	}
 
 		close(privKeyChan)
-=======
-		color.Yellow("WIF: %s", btc_utils.GenerateWif(foundAddress))
-		close(done)
->>>>>>> a13c18a228480bb9694b7ab15fe4c53ddd636e8f
 	}
 
 	// Wait for all workers to finish
