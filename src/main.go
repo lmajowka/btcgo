@@ -51,7 +51,6 @@ func main() {
 	color.Cyan("BTC GO - Investidor Internacional")
 	color.White("v0.2")
 
-
 	// Ask the user for the range number
 	rangeNumber := PromptRangeNumber(len(ranges.Ranges))
 
@@ -60,7 +59,6 @@ func main() {
 
 	privKeyInt := new(big.Int)
 	privKeyInt.SetString(privKeyHex[2:], 16)
-
 
 	// Load wallet addresses from JSON file
 	wallets, err := LoadWallets(filepath.Join(rootDir, "data", "wallets.json"))
@@ -74,17 +72,20 @@ func main() {
 	// Number of CPU cores to use
 	numCPU := runtime.NumCPU()
 	fmt.Printf("CPUs detectados: %s\n", green(numCPU))
-	runtime.GOMAXPROCS(numCPU * 2)
+	runtime.GOMAXPROCS(numCPU)
+
+	// Ask the user for the number of cpus
+	cpusNumber := PromptCPUNumber()
 
 	// Create a channel to send private keys to workers
-	privKeyChan := make(chan *big.Int, numCPU*2)
+	privKeyChan := make(chan *big.Int, cpusNumber)
 	// Create a channel to receive results from workers
 	resultChan := make(chan *big.Int)
 	// Create a wait group to wait for all workers to finish
 	var wg sync.WaitGroup
 
 	// Start worker goroutines
-	for i := 0; i < numCPU*2; i++ {
+	for i := 0; i < cpusNumber; i++ {
 		wg.Add(1)
 		go worker(wallets, privKeyChan, resultChan, &wg)
 	}
@@ -131,22 +132,22 @@ func main() {
 		color.Yellow("Chave privada encontrada: %064x\n", foundAddress)
 		color.Yellow("WIF: %s", wif)
 
-	// Obter a data e horário atuais
-	currentTime := time.Now().Format("2006-01-02 15:04:05")
+		// Obter a data e horário atuais
+		currentTime := time.Now().Format("2006-01-02 15:04:05")
 
-	// Abrir ou criar o arquivo chaves_encontradas.txt
-	file, err := os.OpenFile("chaves_encontradas.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		fmt.Println("Erro ao abrir o arquivo:", err)
-	} else {
-		_, err = file.WriteString(fmt.Sprintf("Data/Hora: %s | Chave privada: %064x | WIF: %s\n", currentTime, foundAddress, wif))
+		// Abrir ou criar o arquivo chaves_encontradas.txt
+		file, err := os.OpenFile("chaves_encontradas.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			fmt.Println("Erro ao escrever no arquivo:", err)
+			fmt.Println("Erro ao abrir o arquivo:", err)
 		} else {
-			fmt.Println("Chaves salvas com sucesso.")
+			_, err = file.WriteString(fmt.Sprintf("Data/Hora: %s | Chave privada: %064x | WIF: %s\n", currentTime, foundAddress, wif))
+			if err != nil {
+				fmt.Println("Erro ao escrever no arquivo:", err)
+			} else {
+				fmt.Println("Chaves salvas com sucesso.")
+			}
+			file.Close()
 		}
-		file.Close()
-	}
 
 		close(privKeyChan)
 	}
@@ -159,7 +160,6 @@ func main() {
 	fmt.Printf("Chaves checadas: %s\n", humanize.Comma(int64(keysChecked)))
 	fmt.Printf("Tempo: %.2f seconds\n", elapsedTime)
 	fmt.Printf("Chaves por segundo: %s\n", humanize.Comma(int64(keysPerSecond)))
-
 
 }
 
@@ -177,5 +177,3 @@ func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *bi
 		}
 	}
 }
-
-
