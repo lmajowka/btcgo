@@ -49,7 +49,7 @@ func main() {
 	}
 
 	color.Cyan("BTC GO - Investidor Internacional")
-	color.White("v0.2")
+	color.Yellow("v0.3")
 
 	// Ask the user for the range number
 	rangeNumber := PromptRangeNumber(len(ranges.Ranges))
