@@ -43,6 +43,6 @@ Aí é só seguir o baile, parceiro.
 
 
 
-[install-go]: https://www.docker.com/get-started/
+[install-go]: https://go.dev/doc/install
 [install-docker]: https://www.docker.com/get-started/
 [install-docker-compose]: https://docs.docker.com/compose/install/
