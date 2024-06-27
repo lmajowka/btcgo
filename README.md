@@ -37,7 +37,7 @@ Aí é só seguir o baile, parceiro.
  * Clona o repo:
   ``` git clone git@github.com:lmajowka/btcgo.git && cd btcgo```
  * Build do Dockerfile:
-   ``` docker buildx build --no-cache -t btcgo```
+   ``` docker buildx build --no-cache -t btcgo .```
  * Executa a imagem contruída no passo anterior:
    ``` docker run -it --name btcgo btcgo```
 
