@@ -2,6 +2,8 @@
 
 # Instruções para rodar o projeto (na sua máquina)
 
+[![instalação do Go no Windows](https://img.youtube.com/vi/679Zc7ZQLtI/0.jpg)](https://www.youtube.com/watch?v=679Zc7ZQLtI)
+
 ## Requisitos
   -  [Go][install-go]
   -  Terminal
