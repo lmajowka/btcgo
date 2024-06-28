@@ -79,7 +79,7 @@ func main() {
 		if err != nil || verificaKey == "" {
 			// FAZER PERGUNTA SE DESEJA INFORMAR O NUMERO DE INCIO DO MODO SEQUENCIAL OU COMEÇAR DO INICIO
 
-			msSequencialouInicio := PromptAuto("Opção 1: Deseja começar do inicio da busca (não efetivo) ou \nOpção 2: Escolher entre o range da carteira informada? \nPor favor numero entre 1 ou 2:",2)
+			msSequencialouInicio := PromptAuto("Opção 1: Deseja começar do inicio da busca (não efetivo) ou \nOpção 2: Escolher entre o range(porcentagem) da carteira informada? \nPor favor numero entre 1 ou 2:",2)
 			if(msSequencialouInicio == 2){
 				
 			// Definindo as variáveis privKeyMinInt e privKeyMaxInt como big.Int
@@ -127,12 +127,12 @@ func main() {
 			// Verificando o valor final como uma string hexadecimal
 			verificaKey := min.Text(16)
 			privKeyInt.SetString(verificaKey, 16)
-			fmt.Printf("Range informado, iniciando: %s\n", verificaKey)
+			fmt.Printf("Porcentagem informada, iniciando: %s\n", verificaKey)
 
 			}else{
 				verificaKey = ranges.Ranges[rangeNumber-1].Min
 				privKeyInt.SetString(verificaKey[2:], 16)
-				fmt.Printf("Nenhuma chave privada salva encontrada, iniciando do começo. %s: %s\n", carteirasalva, verificaKey)
+				fmt.Printf("Iniciando do começo. %s: %s\n", carteirasalva, verificaKey)
 			}
 
 		} else {
