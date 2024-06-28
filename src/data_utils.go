@@ -6,85 +6,11 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
-<<<<<<< Updated upstream
-)
-
-=======
-	"runtime"
-	"strconv"
+	"fmt"
 	"strings"
-	"math/big"
-	"sync"
-
-	"btcgo/src/crypto/btc_utils"
 )
 
-// promptRangeNumber prompts the user to select a range number
-func PromptRangeNumber(totalRanges int) int {
-	reader := bufio.NewReader(os.Stdin)
-	charReadline := '\n'
 
-	if runtime.GOOS == "windows" {
-		charReadline = '\r'
-	}
-
-	for {
-		fmt.Printf("Escolha a carteira (1 a %d): ", totalRanges)
-		input, _ := reader.ReadString(byte(charReadline))
-		input = strings.TrimSpace(input)
-		rangeNumber, err := strconv.Atoi(input)
-		if err == nil && rangeNumber >= 1 && rangeNumber <= totalRanges {
-			return rangeNumber
-		}
-		fmt.Println("Numero invalido.")
-	}
-}
-
-// PromptModos prompts the user to select a modo's
-func PromptModos(totalModos int) int {
-	reader := bufio.NewReader(os.Stdin)
-	charReadline := '\n'
-
-	if runtime.GOOS == "windows" {
-		charReadline = '\r'
-	}
-
-	for {
-		fmt.Printf("Escolha os modos que deseja de (1 a %d) \n  Modo do inicio: 1 - Modo sequencial(chave do arquivo): 2): ", totalModos)
-		input, _ := reader.ReadString(byte(charReadline))
-		input = strings.TrimSpace(input)
-		modoSelecinado, err := strconv.Atoi(input)
-		if err == nil && modoSelecinado >= 1 && modoSelecinado <= totalModos {
-			return modoSelecinado
-			//fmt.Println(modoSelecinado)
-		}
-		fmt.Println("Modo invalido.")
-	}
-}
-
-// PromptAuto solicita ao usuário a seleção de um número dentro de um intervalo específico.
-func PromptAuto(pergunta string, totalnumbers int) int {
-	reader := bufio.NewReader(os.Stdin)
-	charReadline := '\n'
-
-	if runtime.GOOS == "windows" {
-		charReadline = '\r'
-	}
-
-	for {
-		fmt.Printf(pergunta)
-		input, _ := reader.ReadString(byte(charReadline))
-		input = strings.TrimSpace(input)
-		resposta, err := strconv.Atoi(input)
-		if err == nil && resposta >= 1 && resposta <= totalnumbers {
-			return resposta
-		}
-		fmt.Println("Resposta inválida.")
-	}
-}
-
-
->>>>>>> Stashed changes
 // contains checks if a string is in a slice of strings
 func Contains(slice [][]byte, item []byte) bool {
 	for _, a := range slice {
@@ -146,21 +72,7 @@ func LoadWallets(filename string) (*Wallets, error) {
 	return &wallets, nil
 }
 
-// start na workers
-func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *big.Int, wg *sync.WaitGroup) {
-	defer wg.Done()
-	for privKeyInt := range privKeyChan {
-		address := btc_utils.CreatePublicHash160(privKeyInt)
-		if Contains(wallets.Addresses, address) {
-			select {
-			case resultChan <- privKeyInt:
-				return
-			default:
-				return
-			}
-		}
-	}
-}
+
 
 func saveUltimaKeyWallet(filename string, carteira string, chave string) error {
 	// abre o arquivo em modo de append, cria se não existir

@@ -56,6 +56,9 @@ func main() {
 
 	// Ask the user for the range number
 	rangeNumber := PromptRangeNumber(len(ranges.Ranges))
+
+
+	// Pergunta sobre modos de usar
 	modoSelecionado := PromptModos(2) // quantidade de modos
 
 
@@ -65,8 +68,6 @@ func main() {
 
 	privKeyInt := new(big.Int)
 
-<<<<<<< Updated upstream
-=======
 
 	if(modoSelecionado == 1){
 		// Initialize privKeyInt with the minimum value of the selected range
@@ -142,7 +143,7 @@ func main() {
 
 	}
 
->>>>>>> Stashed changes
+
 	// Load wallet addresses from JSON file
 	wallets, err := LoadWallets(filepath.Join(rootDir, "data", "wallets.json"))
 	if err != nil {
@@ -270,9 +271,10 @@ func main() {
 	fmt.Printf("Tempo: %.2f seconds\n", elapsedTime)
 	fmt.Printf("Chaves por segundo: %s\n", humanize.Comma(int64(keysPerSecond)))
 
-<<<<<<< Updated upstream
 }
 
+
+// start na workers
 func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *big.Int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for privKeyInt := range privKeyChan {
@@ -287,9 +289,4 @@ func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *bi
 		}
 	}
 }
-=======
-}
 
-
-
->>>>>>> Stashed changes

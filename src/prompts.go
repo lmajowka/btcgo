@@ -49,3 +49,47 @@ func PromptCPUNumber() int {
 		fmt.Println("Numero invalido.")
 	}
 }
+
+
+// PromptModos prompts the user to select a modo's
+func PromptModos(totalModos int) int {
+	reader := bufio.NewReader(os.Stdin)
+	charReadline := '\n'
+
+	if runtime.GOOS == "windows" {
+		charReadline = '\r'
+	}
+
+	for {
+		fmt.Printf("Escolha os modos que deseja de (1 a %d) \n  Modo do inicio: 1 - Modo sequencial(chave do arquivo): 2): ", totalModos)
+		input, _ := reader.ReadString(byte(charReadline))
+		input = strings.TrimSpace(input)
+		modoSelecinado, err := strconv.Atoi(input)
+		if err == nil && modoSelecinado >= 1 && modoSelecinado <= totalModos {
+			return modoSelecinado
+			//fmt.Println(modoSelecinado)
+		}
+		fmt.Println("Modo invalido.")
+	}
+}
+
+// PromptAuto solicita ao usuário a seleção de um número dentro de um intervalo específico.
+func PromptAuto(pergunta string, totalnumbers int) int {
+	reader := bufio.NewReader(os.Stdin)
+	charReadline := '\n'
+
+	if runtime.GOOS == "windows" {
+		charReadline = '\r'
+	}
+
+	for {
+		fmt.Printf(pergunta)
+		input, _ := reader.ReadString(byte(charReadline))
+		input = strings.TrimSpace(input)
+		resposta, err := strconv.Atoi(input)
+		if err == nil && resposta >= 1 && resposta <= totalnumbers {
+			return resposta
+		}
+		fmt.Println("Resposta inválida.")
+	}
+}
