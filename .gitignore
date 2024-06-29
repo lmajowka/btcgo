@@ -22,9 +22,13 @@ vendor/
 # Ignore go build output
 bin/
 
+# Ignore files backup tests
+backup/
+
 # Ignore the executable
 btcgo
 btcgo.exe
 
 # Ignore files code
 chaves_encontradas.txt
+ultimaChavePorCarteira.txt

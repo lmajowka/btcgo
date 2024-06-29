@@ -54,11 +54,16 @@ func main() {
 	// Ask the user for the range number
 	rangeNumber := PromptRangeNumber(len(ranges.Ranges))
 
-	// Initialize privKeyInt with the minimum value of the selected range
-	privKeyHex := ranges.Ranges[rangeNumber-1].Min
 
-	privKeyInt := new(big.Int)
-	privKeyInt.SetString(privKeyHex[2:], 16)
+	// Pergunta sobre modos de usar
+	modoSelecionado := PromptModos(2) // quantidade de modos
+
+    var carteirasalva string
+    carteirasalva = fmt.Sprintf("%d", rangeNumber)
+    privKeyInt := new(big.Int)
+
+    // função HandleModoSelecionado - onde busca o modo selecionado do usuario. // talvez criar a funcao de favoritar essa opções e iniciar automaticamente?
+    privKeyInt = HandleModoSelecionado(modoSelecionado, ranges, rangeNumber, privKeyInt, carteirasalva)
 
 	// Load wallet addresses from JSON file
 	wallets, err := LoadWallets(filepath.Join(rootDir, "data", "wallets.json"))
@@ -84,16 +89,34 @@ func main() {
 	// Create a wait group to wait for all workers to finish
 	var wg sync.WaitGroup
 
+
+
 	// Start worker goroutines
 	for i := 0; i < cpusNumber; i++ {
 		wg.Add(1)
 		go worker(wallets, privKeyChan, resultChan, &wg)
 	}
 
+
 	// Ticker for periodic updates every 5 seconds
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 	done := make(chan struct{})
+
+	// Variavel to update last processed wallet address
+	var lastkey string
+	// Goroutine to update last processed wallet address
+	go func() {
+	for {
+	    select {
+	    case privKey := <-privKeyChan:
+	        lastkey = fmt.Sprintf("%064x", privKey)
+	    case <-done:
+	        return
+	    }
+	}
+	}()
+
 
 	// Goroutine to print speed updates
 	go func() {
@@ -103,6 +126,7 @@ func main() {
 				elapsedTime := time.Since(startTime).Seconds()
 				keysPerSecond := float64(keysChecked) / elapsedTime
 				fmt.Printf("Chaves checadas: %s Chaves por segundo: %s\n", humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
+				if(modoSelecionado == 2){saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastkey)}			
 			case <-done:
 				return
 			}
@@ -126,6 +150,7 @@ func main() {
 
 	// Wait for a result from any worker
 	var foundAddress *big.Int
+	var foundAddressString string
 	select {
 	case foundAddress = <-resultChan:
 		wif := btc_utils.GenerateWif(foundAddress)
@@ -149,7 +174,13 @@ func main() {
 			file.Close()
 		}
 
-		close(privKeyChan)
+	if(modoSelecionado == 2){
+		foundAddressString = fmt.Sprintf("%064x", foundAddress)
+		saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, foundAddressString)
+	}			
+
+	close(privKeyChan)
+
 	}
 
 	// Wait for all workers to finish
@@ -163,6 +194,8 @@ func main() {
 
 }
 
+
+// start na workers
 func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *big.Int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for privKeyInt := range privKeyChan {
@@ -177,3 +210,4 @@ func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *bi
 		}
 	}
 }
+
