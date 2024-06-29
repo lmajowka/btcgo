@@ -58,15 +58,12 @@ func main() {
 	// Pergunta sobre modos de usar
 	modoSelecionado := PromptModos(2) // quantidade de modos
 
-
-
     var carteirasalva string
     carteirasalva = fmt.Sprintf("%d", rangeNumber)
     privKeyInt := new(big.Int)
 
     // função HandleModoSelecionado - onde busca o modo selecionado do usuario. // talvez criar a funcao de favoritar essa opções e iniciar automaticamente?
     privKeyInt = HandleModoSelecionado(modoSelecionado, ranges, rangeNumber, privKeyInt, carteirasalva)
-
 
 	// Load wallet addresses from JSON file
 	wallets, err := LoadWallets(filepath.Join(rootDir, "data", "wallets.json"))
@@ -128,7 +125,7 @@ func main() {
 			case <-ticker.C:
 				elapsedTime := time.Since(startTime).Seconds()
 				keysPerSecond := float64(keysChecked) / elapsedTime
-				fmt.Printf("Chaves checadas: %s, Chaves por segundo: %s\n", humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
+				fmt.Printf("Chaves checadas: %s Chaves por segundo: %s\n", humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
 				if(modoSelecionado == 2){saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastkey)}			
 			case <-done:
 				return
