@@ -120,7 +120,7 @@ func main() {
 			case <-ticker.C:
 				elapsedTime := time.Since(startTime).Seconds()
 				keysPerSecond := float64(keysChecked) / elapsedTime
-				fmt.Printf("Chaves checadas: %s Chaves por segundo: %s\n", humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
+				fmt.Printf("Posição HEX: 0x%s ; Chaves checadas: %s ; Chaves por segundo: %s\n", privKeyInt.Text(16), humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
 				if modoSelecionado == 2 {
 					saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastkey)
 				}
