@@ -137,9 +137,11 @@ func main() {
 			case <-ticker.C:
 				elapsedTime := time.Since(startTime).Seconds()
 				keysPerSecond := float64(keysChecked) / elapsedTime
-				remainingKeys := combinacoesFloat - float64(keysChecked) // Calcula o número de chaves restantes a serem verificadas
-				estimatedTime := remainingKeys / keysPerSecond           // Calcula o tempo estimado para conclusão em segundos
-				fmt.Printf("%s - Posição HEX: 0x%s ; Chaves checadas: %s ; Chaves por segundo: %s ; Tempo restante: %s\n", time.Now().Format("2006-01-02 15:04:05"), privKeyInt.Text(16), humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)), formatDuration(estimatedTime))
+				remainingKeys := combinacoesFloat - float64(keysChecked)                        // Calcula o número de chaves restantes a serem verificadas
+				estimatedTime := remainingKeys / keysPerSecond                                  // Calcula o tempo estimado para conclusão em segundos
+				posicaoPercent := calculatePercentage(privKeyInt, rangeMinInt, rangeMaxInt) - 1 // Calcula a posição, em porcentagem
+				posicaoPercentStr := fmt.Sprintf("%.12f", posicaoPercent)                       // Formata com 12 casas decimais
+				fmt.Printf("%s - Posição HEX: 0x%s ; Posicao: %s%% ; Chaves checadas: %s ; Chaves por segundo: %s ; Tempo restante: %s\n", time.Now().Format("2006-01-02 15:04:05"), privKeyInt.Text(16), posicaoPercentStr, humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)), formatDuration(estimatedTime))
 				if modoSelecionado == 2 {
 					saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastkey)
 				}
@@ -236,6 +238,24 @@ func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *bi
 			}
 		}
 	}
+}
+
+// Essa função calcula a posição privKeyInt representa entre rangeMinInt e rangeMaxInt, em porcentagem
+func calculatePercentage(pos, min, max *big.Int) float64 {
+	// Calcula o intervalo total
+	totalRange := new(big.Int).Sub(max, min)
+
+	// Calcula a posição relativa de privKeyInt dentro do intervalo
+	relativePosition := new(big.Int).Sub(pos, min)
+
+	// Converte totalRange e relativePosition para float64
+	totalRangeFloat, _ := new(big.Float).SetInt(totalRange).Float64()
+	relativePositionFloat, _ := new(big.Float).SetInt(relativePosition).Float64()
+
+	// Calcula a porcentagem
+	percentage := (relativePositionFloat / totalRangeFloat) * 100
+
+	return percentage
 }
 
 // Marton - A função recebe um tempo estimado para conclusão e retorna string com anos, meses, dias, horas e minutos:
