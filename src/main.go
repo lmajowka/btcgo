@@ -70,6 +70,20 @@ func main() {
 		log.Fatalf("Failed to load wallets: %v", err)
 	}
 
+	// Marton - Vamos verificar se o range inicial é menor que o range final:
+	rangeMinHex := ranges.Ranges[rangeNumber-1].Min
+	rangeMaxHex := ranges.Ranges[rangeNumber-1].Max
+	rangeMinInt := new(big.Int)
+	rangeMinInt.SetString(rangeMinHex[2:], 16)
+	rangeMaxInt := new(big.Int)
+	rangeMaxInt.SetString(rangeMaxHex[2:], 16)
+	fmt.Println("Range.Min: " + rangeMinInt.Text(16)) // Imprime em Hexadecimal
+	fmt.Println("Range.Max: " + rangeMaxInt.Text(16)) // Imprime em Hexadecimal
+	if rangeMinInt.Cmp(rangeMaxInt) > 0 {
+		fmt.Println("Erro: o range inicial não pode ser maior que o range final.")
+		os.Exit(1)
+	}
+
 	keysChecked := 0
 	startTime := time.Now()
 
@@ -123,6 +137,18 @@ func main() {
 				fmt.Printf("Posição HEX: 0x%s ; Chaves checadas: %s ; Chaves por segundo: %s\n", privKeyInt.Text(16), humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
 				if modoSelecionado == 2 {
 					saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastkey)
+				}
+
+				// Marton - Verifica se a chave atual é maior que o range final:
+				if privKeyInt.Cmp(rangeMaxInt) > 0 {
+					fmt.Println("O privKeyInt atual é maior que o range final.")
+					os.Exit(1)
+				}
+
+				// Marton - Verifica se a chave atual é menor que o range inicial:
+				if privKeyInt.Cmp(rangeMinInt) < 0 {
+					fmt.Println("O privKeyInt atual é menor que o range inicial.")
+					os.Exit(1)
 				}
 			case <-done:
 				return
