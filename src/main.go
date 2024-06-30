@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"math/big"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sync"
@@ -18,7 +20,7 @@ import (
 
 // Wallets struct to hold the array of wallet addresses
 type Wallets struct {
-	Addresses [][]byte `json:"wallets"`
+	Addresses       [][]byte `json:"wallets"`
 }
 
 // Range struct to hold the minimum, maximum, and status
@@ -31,6 +33,31 @@ type Range struct {
 // Ranges struct to hold an array of ranges
 type Ranges struct {
 	Ranges []Range `json:"ranges"`
+}
+
+func titulo() {
+	fmt.Println("\x1b[38;2;250;128;114m" + "╔═══════════════════════════════════════╗")
+	fmt.Println("║\x1b[0m\x1b[36m" + "   ____ _______ _____    _____  ____   " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("║\x1b[0m\x1b[36m" + "  |  _ \\__   __/ ____|  / ____|/ __ \\  " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("║\x1b[0m\x1b[36m" + "  | |_) | | | | |      | |  __| |  | | " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("║\x1b[0m\x1b[36m" + "  |  _ <  | | | |      | | |_ | |  | | " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("║\x1b[0m\x1b[36m" + "  | |_) | | | | |____  | |__| | |__| | " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("║\x1b[0m\x1b[36m" + "  |____/  |_|  \\_____|  \\_____|\\____/  " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("║\x1b[0m\x1b[36m" + "                                       " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("╚════\x1b[32m" + "Investidor Internacional - v0.4" + "\x1b[0m\x1b[38;2;250;128;114m════╝" + "\x1b[0m")
+}
+
+func ClearConsole() {
+	switch runtime.GOOS {
+	case "windows":
+		cmd := exec.Command("cmd", "/c", "cls")
+		cmd.Stdout = os.Stdout
+		cmd.Run()
+	default:
+		cmd := exec.Command("clear")
+		cmd.Stdout = os.Stdout
+		cmd.Run()
+	}
 }
 
 func main() {
@@ -48,11 +75,18 @@ func main() {
 		log.Fatalf("Failed to load ranges: %v", err)
 	}
 
-	color.Cyan("BTC GO - Investidor Internacional")
-	color.Yellow("v0.4")
+	ClearConsole()
+	titulo()
 
 	// Ask the user for the range number
 	rangeNumber := PromptRangeNumber(len(ranges.Ranges))
+	wallets, err := LoadWallets(filepath.Join(rootDir, "data", "wallets.json"))
+	if err != nil {
+		log.Fatalf("Failed to load wallets: %v", err)
+	}
+	wallet := wallets.Addresses[rangeNumber-1]
+	// pergunta se deseja verificar todas as carteiras ou apenas uma por vez
+	modoUniqueOrAll := PromptUniqueOrAll()
 
 	// Pergunta sobre modos de usar
 	modoSelecionado := PromptModos(2) // quantidade de modos
@@ -65,10 +99,6 @@ func main() {
 	privKeyInt = HandleModoSelecionado(modoSelecionado, ranges, rangeNumber, privKeyInt, carteirasalva)
 
 	// Load wallet addresses from JSON file
-	wallets, err := LoadWallets(filepath.Join(rootDir, "data", "wallets.json"))
-	if err != nil {
-		log.Fatalf("Failed to load wallets: %v", err)
-	}
 
 	keysChecked := 0
 	startTime := time.Now()
@@ -91,7 +121,11 @@ func main() {
 	// Start worker goroutines
 	for i := 0; i < cpusNumber; i++ {
 		wg.Add(1)
-		go worker(wallets, privKeyChan, resultChan, &wg)
+		if modoUniqueOrAll == 2 {
+			go workerForUniqueFind(wallet, privKeyChan, resultChan, &wg)
+		} else {
+			go worker(wallets, privKeyChan, resultChan, &wg)
+		}
 	}
 
 	// Ticker for periodic updates every 5 seconds
@@ -197,6 +231,20 @@ func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *bi
 	for privKeyInt := range privKeyChan {
 		address := btc_utils.CreatePublicHash160(privKeyInt)
 		if Contains(wallets.Addresses, address) {
+			select {
+			case resultChan <- privKeyInt:
+				return
+			default:
+				return
+			}
+		}
+	}
+}
+func workerForUniqueFind(wallet []byte, privKeyChan <-chan *big.Int, resultChan chan<- *big.Int, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for privKeyInt := range privKeyChan {
+		address := btc_utils.CreatePublicHash160(privKeyInt)
+		if bytes.Equal(wallet, address) {
 			select {
 			case resultChan <- privKeyInt:
 				return

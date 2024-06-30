@@ -63,6 +63,19 @@ func CreatePublicHash160(privKeyInt *big.Int) []byte {
 
 }
 
+func checksum(payload []byte) []byte {
+	hash1 := sha256.Sum256(payload)
+	hash2 := sha256.Sum256(hash1[:])
+	return hash2[:4]
+}
+
+func Hash160ToAddress(hash160 []byte) string {
+	versionedPayload := append([]byte{0x00}, hash160...)
+	checksum := checksum(versionedPayload)
+	fullPayload := append(versionedPayload, checksum...)
+	return base58.Encode(fullPayload)
+}
+
 // hash160 computes the RIPEMD160(SHA256(b)) hash.
 func hash160(b []byte) []byte {
 	h := sha256.New()
