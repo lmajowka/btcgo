@@ -1,7 +1,7 @@
 package main
 
 import (
-    "btcgo/internal/domain"
+    "btcgo/internal/core"
     "btcgo/internal/utils"
     "fmt"
     "log"
@@ -74,7 +74,7 @@ func main() {
     // Start worker goroutines
     for i := 0; i < cpusNumber; i++ {
         wg.Add(1)
-        go worker(wallets, privKeyChan, resultChan, &wg)
+        go core.Worker(wallets, privKeyChan, resultChan, &wg)
     }
 
     // Ticker for periodic updates every 5 seconds
@@ -172,20 +172,4 @@ func main() {
     fmt.Printf("Tempo: %.2f seconds\n", elapsedTime)
     fmt.Printf("Chaves por segundo: %s\n", humanize.Comma(int64(keysPerSecond)))
 
-}
-
-// start na workers
-func worker(wallets *domain.Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *big.Int, wg *sync.WaitGroup) {
-    defer wg.Done()
-    for privKeyInt := range privKeyChan {
-        address := utils.CreatePublicHash160(privKeyInt)
-        if utils.Contains(wallets.Addresses, address) {
-            select {
-            case resultChan <- privKeyInt:
-                return
-            default:
-                return
-            }
-        }
-    }
 }

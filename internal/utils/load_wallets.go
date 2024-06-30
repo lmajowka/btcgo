@@ -2,7 +2,6 @@ package utils
 
 import (
     "btcgo/internal/domain"
-    "btcgo/src/crypto/base58"
     "encoding/json"
     "io"
     "os"
@@ -31,7 +30,7 @@ func LoadWallets(filename string) (*domain.Wallets, error) {
 
     var wallets domain.Wallets
     for _, address := range walletsTemp.Addresses {
-        wallets.Addresses = append(wallets.Addresses, base58.Decode(address)[1:21])
+        wallets.Addresses = append(wallets.Addresses, Decode(address)[1:21])
     }
 
     return &wallets, nil
