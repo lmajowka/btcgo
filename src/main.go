@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
 	"log"
 	"math/big"
@@ -55,13 +56,17 @@ func main() {
 	rangeNumber := PromptRangeNumber(len(ranges.Ranges))
 
 	// Pergunta sobre modos de usar
-	modoSelecionado := PromptModos(2) // quantidade de modos
+	modoSelecionado := PromptModos(3) // quantidade de modos
 
 	var carteirasalva string
 	carteirasalva = fmt.Sprintf("%d", rangeNumber)
 	privKeyInt := new(big.Int)
 
 	// função HandleModoSelecionado - onde busca o modo selecionado do usuario. // talvez criar a funcao de favoritar essa opções e iniciar automaticamente?
+	if modoSelecionado < 3 {
+		privKeyInt = HandleModoSelecionado(modoSelecionado, ranges, rangeNumber, privKeyInt, carteirasalva)
+	}
+
 	privKeyInt = HandleModoSelecionado(modoSelecionado, ranges, rangeNumber, privKeyInt, carteirasalva)
 
 	// Load wallet addresses from JSON file
@@ -86,6 +91,13 @@ func main() {
 		fmt.Println("Erro: o range inicial não pode ser maior que o range final.")
 		os.Exit(1)
 	}
+
+	// Caso tenha escolhido o modo aleatório, vamos obter os valores iniciais:
+	if modoSelecionado == 3 {
+		updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt)
+	}
+
+	fmt.Println("Posição Inicial: " + privKeyInt.Text(16)) // Imprime em Hexadecimal
 
 	keysChecked := 0
 	startTime := time.Now()
@@ -116,8 +128,20 @@ func main() {
 	defer ticker.Stop()
 	done := make(chan struct{})
 
+	// Ticker para obter um número aleatório dentro do range a cada hora:
+	tickerRandom := time.NewTicker(2 * time.Hour)
+	defer tickerRandom.Stop()
+
 	// Variavel to update last processed wallet address
 	var lastkey string
+
+	// Vamos obter uma nova posição aleatória a cada hora:
+	go func() {
+		for range tickerRandom.C {
+			updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt)
+		}
+	}()
+
 	// Goroutine to update last processed wallet address
 	go func() {
 		for {
@@ -137,10 +161,10 @@ func main() {
 			case <-ticker.C:
 				elapsedTime := time.Since(startTime).Seconds()
 				keysPerSecond := float64(keysChecked) / elapsedTime
-				remainingKeys := combinacoesFloat - float64(keysChecked)                        // Calcula o número de chaves restantes a serem verificadas
-				estimatedTime := remainingKeys / keysPerSecond                                  // Calcula o tempo estimado para conclusão em segundos
-				posicaoPercent := calculatePercentage(privKeyInt, rangeMinInt, rangeMaxInt) - 1 // Calcula a posição, em porcentagem
-				posicaoPercentStr := fmt.Sprintf("%.12f", posicaoPercent)                       // Formata com 12 casas decimais
+				remainingKeys := combinacoesFloat - float64(keysChecked)                    // Calcula o número de chaves restantes a serem verificadas
+				estimatedTime := remainingKeys / keysPerSecond                              // Calcula o tempo estimado para conclusão em segundos
+				posicaoPercent := calculatePercentage(privKeyInt, rangeMinInt, rangeMaxInt) // Calcula a posição, em porcentagem
+				posicaoPercentStr := fmt.Sprintf("%.12f", posicaoPercent)                   // Formata com 12 casas decimais
 				fmt.Printf("%s - Posição HEX: 0x%s ; Posicao: %s%% ; Chaves checadas: %s ; Chaves por segundo: %s ; Tempo restante: %s\n", time.Now().Format("2006-01-02 15:04:05"), privKeyInt.Text(16), posicaoPercentStr, humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)), formatDuration(estimatedTime))
 				if modoSelecionado == 2 {
 					saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastkey)
@@ -148,15 +172,27 @@ func main() {
 
 				// Marton - Verifica se a chave atual é maior que o range final:
 				if privKeyInt.Cmp(rangeMaxInt) > 0 {
-					fmt.Println("O privKeyInt atual é maior que o range final.")
-					os.Exit(1)
+					fmt.Println("O privKeyInt atual é maior que o range final. Vamos calcular nova posição aleatória.")
+					updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt)
 				}
 
 				// Marton - Verifica se a chave atual é menor que o range inicial:
 				if privKeyInt.Cmp(rangeMinInt) < 0 {
-					fmt.Println("O privKeyInt atual é menor que o range inicial.")
-					os.Exit(1)
+					fmt.Println("O privKeyInt atual é menor que o range inicial. Vamos calcular nova posição aleatória.")
+					updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt)
 				}
+
+				if modoSelecionado == 3 {
+					if posicaoPercent < 10 {
+						fmt.Println("Não queremos processar os primeiros 10% do range. Vamos calcular nova posição aleatória.")
+						updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt)
+					}
+					if posicaoPercent > 99 {
+						fmt.Println("Não queremos processar os últimos 1% do range. Vamos calcular nova posição aleatória.")
+						updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt)
+					}
+				}
+
 			case <-done:
 				return
 			}
@@ -255,7 +291,7 @@ func calculatePercentage(pos, min, max *big.Int) float64 {
 	// Calcula a porcentagem
 	percentage := (relativePositionFloat / totalRangeFloat) * 100
 
-	return percentage
+	return percentage - 1
 }
 
 // Marton - A função recebe um tempo estimado para conclusão e retorna string com anos, meses, dias, horas e minutos:
@@ -284,4 +320,44 @@ func formatDuration(seconds float64) string {
 	// Monta a string formatada
 	formattedDuration := fmt.Sprintf("%d anos, %d meses, %d dias", years, months, days)
 	return formattedDuration
+}
+
+func updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt *big.Int) {
+	rangeSize := new(big.Int).Sub(rangeMaxInt, rangeMinInt)
+	randomNum, err := rand.Int(rand.Reader, rangeSize)
+	if err != nil {
+		fmt.Println("Erro ao gerar número aleatório:", err)
+		return
+	}
+	privKeyInt.Add(randomNum, rangeMinInt)
+
+	posicaoPercent := calculatePercentage(privKeyInt, rangeMinInt, rangeMaxInt) // Calcula a posição, em porcentagem
+	posicaoPercentStr := fmt.Sprintf("%.12f", posicaoPercent)                   // Formata com 12 casas decimais
+
+	// Representação gráfica da porcentagem:
+	graphicRepresentation := generateGraphicRepresentation(posicaoPercent)
+
+	fmt.Printf("\nMovendo para nova posição aleatória: %s ; Nova posição: %s  -  %s\n\n", privKeyInt.Text(16), posicaoPercentStr, graphicRepresentation)
+	fmt.Println()
+
+}
+
+// Aqui eu gero uma representação gráfica, em ASCII, da porcentagem:
+func generateGraphicRepresentation(percentage float64) string {
+	totalLength := 50
+	position := int(percentage * float64(totalLength) / 100)
+
+	if position >= totalLength {
+		position = totalLength - 1
+	} else if position < 0 {
+		position = 0
+	}
+
+	representation := make([]rune, totalLength)
+	for i := range representation {
+		representation[i] = '_'
+	}
+	representation[position] = 'X'
+
+	return fmt.Sprintf("[%s]", string(representation))
 }
