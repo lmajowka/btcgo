@@ -1,111 +1,23 @@
-package main
+package utils
 
 import (
-	"bufio"
-	"fmt"
-	"os"
-	"runtime"
-	"strconv"
-	"strings"
-	"math/big"
+    "btcgo/internal/domain"
+    "fmt"
+    "math/big"
+    "strconv"
+    "strings"
 )
 
-// promptRangeNumber prompts the user to select a range number
-func PromptRangeNumber(totalRanges int) int {
-	reader := bufio.NewReader(os.Stdin)
-	charReadline := '\n'
-
-	if runtime.GOOS == "windows" {
-		charReadline = '\r'
-	}
-
-	for {
-		fmt.Printf("Escolha a carteira (1 a %d): ", totalRanges)
-		input, _ := reader.ReadString(byte(charReadline))
-		input = strings.TrimSpace(input)
-		rangeNumber, err := strconv.Atoi(input)
-		if err == nil && rangeNumber >= 1 && rangeNumber <= totalRanges {
-			return rangeNumber
-		}
-		fmt.Println("Numero invalido.")
-	}
-}
-
-func PromptCPUNumber() int {
-	reader := bufio.NewReader(os.Stdin)
-	charReadline := '\n'
-
-	if runtime.GOOS == "windows" {
-		charReadline = '\r'
-	}
-
-	for {
-		fmt.Printf("Quantos CPUs gostaria de usar?: ")
-		input, _ := reader.ReadString(byte(charReadline))
-		input = strings.TrimSpace(input)
-		cpusNumber, err := strconv.Atoi(input)
-		if err == nil && cpusNumber >= 1 && cpusNumber <= 50 {
-			return cpusNumber
-		}
-		fmt.Println("Numero invalido.")
-	}
-}
-
-
-// PromptModos prompts the user to select a modo's
-func PromptModos(totalModos int) int {
-	reader := bufio.NewReader(os.Stdin)
-	charReadline := '\n'
-
-	if runtime.GOOS == "windows" {
-		charReadline = '\r'
-	}
-
-	for {
-		fmt.Printf("Escolha os modos que deseja de (1 a %d) \n  Modo do inicio: 1 - Modo sequencial(chave do arquivo): 2): ", totalModos)
-		input, _ := reader.ReadString(byte(charReadline))
-		input = strings.TrimSpace(input)
-		modoSelecinado, err := strconv.Atoi(input)
-		if err == nil && modoSelecinado >= 1 && modoSelecinado <= totalModos {
-			return modoSelecinado
-			//fmt.Println(modoSelecinado)
-		}
-		fmt.Println("Modo invalido.")
-	}
-}
-
-// PromptAuto solicita ao usuário a seleção de um número dentro de um intervalo específico.
-func PromptAuto(pergunta string, totalnumbers int) int {
-	reader := bufio.NewReader(os.Stdin)
-	charReadline := '\n'
-
-	if runtime.GOOS == "windows" {
-		charReadline = '\r'
-	}
-
-	for {
-		fmt.Printf(pergunta)
-		input, _ := reader.ReadString(byte(charReadline))
-		input = strings.TrimSpace(input)
-		resposta, err := strconv.Atoi(input)
-		if err == nil && resposta >= 1 && resposta <= totalnumbers {
-			return resposta
-		}
-		fmt.Println("Resposta inválida.")
-	}
-}
-
-// HandleModoSelecionado - selecionar modos de incializacao
-func HandleModoSelecionado(modoSelecionado int, ranges *Ranges, rangeNumber int, privKeyInt *big.Int, carteirasalva string) *big.Int {
+func HandleModSelected(modoSelecionado int, ranges *domain.Ranges, rangeNumber int, privKeyInt *big.Int, carteirasalva string) *big.Int {
     if modoSelecionado == 1 {
         // Initialize privKeyInt with the minimum value of the selected range
         privKeyHex := ranges.Ranges[rangeNumber-1].Min
         privKeyInt.SetString(privKeyHex[2:], 16)
     } else if modoSelecionado == 2 {
-        verificaKey, err := LoadUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva)
+        verificaKey, err := LoadLastKeyWallet("ultimaChavePorCarteira.txt", carteirasalva)
         if err != nil || verificaKey == "" {
             // FAZER PERGUNTA SE DESEJA INFORMAR O NUMERO DE INCIO DO MODO SEQUENCIAL OU COMEÇAR DO INICIO
-            msSequencialouInicio := PromptAuto("Opção 1: Deseja começar do inicio da busca (não efetivo) ou \nOpção 2: Escolher entre o range da carteira informada? \nPor favor numero entre 1 ou 2:", 2)
+            msSequencialouInicio := AutoPrompt("Opção 1: Deseja começar do inicio da busca (não efetivo) ou \nOpção 2: Escolher entre o range da carteira informada? \nPor favor numero entre 1 ou 2:", 2)
             if msSequencialouInicio == 2 {
                 // Definindo as variáveis privKeyMinInt e privKeyMaxInt como big.Int
                 privKeyMinInt := new(big.Int)
