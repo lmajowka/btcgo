@@ -70,15 +70,18 @@ func main() {
 		log.Fatalf("Failed to load wallets: %v", err)
 	}
 
-	// Marton - Vamos verificar se o range inicial é menor que o range final:
+	// Marton - Vamos verificar se o range inicial é menor que o range final, exibir o range e o total de combinações:
 	rangeMinHex := ranges.Ranges[rangeNumber-1].Min
 	rangeMaxHex := ranges.Ranges[rangeNumber-1].Max
 	rangeMinInt := new(big.Int)
 	rangeMinInt.SetString(rangeMinHex[2:], 16)
 	rangeMaxInt := new(big.Int)
 	rangeMaxInt.SetString(rangeMaxHex[2:], 16)
-	fmt.Println("Range.Min: " + rangeMinInt.Text(16)) // Imprime em Hexadecimal
-	fmt.Println("Range.Max: " + rangeMaxInt.Text(16)) // Imprime em Hexadecimal
+	combinacoes := new(big.Int).Sub(rangeMaxInt, rangeMinInt)
+	combinacoesFloat, _ := new(big.Float).SetInt(combinacoes).Float64() // Converte combinacoes para float64
+	fmt.Println("Range.Min: " + rangeMinInt.Text(16))                   // Imprime em Hexadecimal
+	fmt.Println("Range.Max: " + rangeMaxInt.Text(16))                   // Imprime em Hexadecimal
+	fmt.Println("Total de Combinações: " + combinacoes.Text(10))        // Imprime em base decimal
 	if rangeMinInt.Cmp(rangeMaxInt) > 0 {
 		fmt.Println("Erro: o range inicial não pode ser maior que o range final.")
 		os.Exit(1)
@@ -134,7 +137,9 @@ func main() {
 			case <-ticker.C:
 				elapsedTime := time.Since(startTime).Seconds()
 				keysPerSecond := float64(keysChecked) / elapsedTime
-				fmt.Printf("Posição HEX: 0x%s ; Chaves checadas: %s ; Chaves por segundo: %s\n", privKeyInt.Text(16), humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
+				remainingKeys := combinacoesFloat - float64(keysChecked) // Calcula o número de chaves restantes a serem verificadas
+				estimatedTime := remainingKeys / keysPerSecond           // Calcula o tempo estimado para conclusão em segundos
+				fmt.Printf("%s - Posição HEX: 0x%s ; Chaves checadas: %s ; Chaves por segundo: %s ; Tempo restante: %s\n", time.Now().Format("2006-01-02 15:04:05"), privKeyInt.Text(16), humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)), formatDuration(estimatedTime))
 				if modoSelecionado == 2 {
 					saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastkey)
 				}
@@ -231,4 +236,32 @@ func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *bi
 			}
 		}
 	}
+}
+
+// Marton - A função recebe um tempo estimado para conclusão e retorna string com anos, meses, dias, horas e minutos:
+func formatDuration(seconds float64) string {
+	// Converte os segundos em um valor inteiro
+	totalSeconds := int64(seconds)
+
+	// Define constantes para as durações
+	const (
+		secondsInMinute = 60
+		secondsInHour   = 60 * secondsInMinute
+		secondsInDay    = 24 * secondsInHour
+		secondsInMonth  = 30 * secondsInDay
+		secondsInYear   = 12 * secondsInMonth
+	)
+
+	years := totalSeconds / secondsInYear
+	totalSeconds %= secondsInYear
+
+	months := totalSeconds / secondsInMonth
+	totalSeconds %= secondsInMonth
+
+	days := totalSeconds / secondsInDay
+	totalSeconds %= secondsInDay
+
+	// Monta a string formatada
+	formattedDuration := fmt.Sprintf("%d anos, %d meses, %d dias", years, months, days)
+	return formattedDuration
 }
