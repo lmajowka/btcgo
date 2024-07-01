@@ -99,20 +99,6 @@ func main() {
 	defer ticker.Stop()
 	done := make(chan struct{})
 
-	// Variavel to update last processed wallet address
-	// var lastkey string
-	// // Goroutine to update last processed wallet address
-	// go func() {
-	// 	for {
-	// 		select {
-	// 		case privKey := <-privKeyChan:
-	// 			lastkey = fmt.Sprintf("%064x", privKey)
-	// 		case <-done:
-	// 			return
-	// 		}
-	// 	}
-	// }()
-
 	// Goroutine to print speed updates
 	go func() {
 		for {
