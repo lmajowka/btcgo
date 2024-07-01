@@ -13,27 +13,11 @@ import (
 	"time"
 
 	"btcgo/src/crypto/btc_utils"
-
+	"btcgo/src/utils"
+	"btcgo/src/integrations/telegram"
 	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
 )
-
-// Wallets struct to hold the array of wallet addresses
-type Wallets struct {
-	Addresses [][]byte `json:"wallets"`
-}
-
-// Range struct to hold the minimum, maximum, and status
-type Range struct {
-	Min    string `json:"min"`
-	Max    string `json:"max"`
-	Status int    `json:"status"`
-}
-
-// Ranges struct to hold an array of ranges
-type Ranges struct {
-	Ranges []Range `json:"ranges"`
-}
 
 func titulo() {
 	fmt.Println("\x1b[38;2;250;128;114m" + "╔═══════════════════════════════════════╗")
@@ -62,7 +46,7 @@ func ClearConsole() {
 
 func main() {
 	green := color.New(color.FgGreen).SprintFunc()
-
+	
 	exePath, err := os.Executable()
 	if err != nil {
 		fmt.Printf("Erro ao obter o caminho do executável: %v\n", err)
@@ -70,7 +54,7 @@ func main() {
 	}
 	rootDir := filepath.Dir(exePath)
 
-	ranges, err := LoadRanges(filepath.Join(rootDir, "data", "ranges.json"))
+	ranges, err := utils.LoadRanges(filepath.Join(rootDir, "data", "ranges.json"))
 	if err != nil {
 		log.Fatalf("Failed to load ranges: %v", err)
 	}
@@ -79,24 +63,24 @@ func main() {
 	titulo()
 
 	// Ask the user for the range number
-	rangeNumber := PromptRangeNumber(len(ranges.Ranges))
-	wallets, err := LoadWallets(filepath.Join(rootDir, "data", "wallets.json"))
+	rangeNumber := utils.PromptRangeNumber(len(ranges.Ranges))
+	wallets, err := utils.LoadWallets(filepath.Join(rootDir, "data", "wallets.json"))
 	if err != nil {
 		log.Fatalf("Failed to load wallets: %v", err)
 	}
 	wallet := wallets.Addresses[rangeNumber-1]
 	// pergunta se deseja verificar todas as carteiras ou apenas uma por vez
-	modoUniqueOrAll := PromptUniqueOrAll()
+	modoUniqueOrAll := utils.PromptUniqueOrAll()
 
 	// Pergunta sobre modos de usar
-	modoSelecionado := PromptModos(2) // quantidade de modos
+	modoSelecionado := utils.PromptModos(2) // quantidade de modos
 
 	var carteirasalva string
 	carteirasalva = fmt.Sprintf("%d", rangeNumber)
 	privKeyInt := new(big.Int)
 
 	// função HandleModoSelecionado - onde busca o modo selecionado do usuario. // talvez criar a funcao de favoritar essa opções e iniciar automaticamente?
-	privKeyInt = HandleModoSelecionado(modoSelecionado, ranges, rangeNumber, privKeyInt, carteirasalva)
+	privKeyInt = utils.HandleModoSelecionado(modoSelecionado, ranges, rangeNumber, privKeyInt, carteirasalva)
 
 	// Load wallet addresses from JSON file
 
@@ -109,7 +93,7 @@ func main() {
 	runtime.GOMAXPROCS(numCPU)
 
 	// Ask the user for the number of cpus
-	cpusNumber := PromptCPUNumber(numCPU)
+	cpusNumber := utils.PromptCPUNumber(numCPU)
 
 	// Create a channel to send private keys to workers
 	privKeyChan := make(chan *big.Int, cpusNumber)
@@ -143,7 +127,7 @@ func main() {
 				fmt.Printf("Chaves checadas: %s Chaves por segundo: %s\n", humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
 				if modoSelecionado == 2 {
 					lastKey := fmt.Sprintf("%064x", privKeyInt)
-					saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastKey)
+					utils.saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastKey)
 				}
 			case <-done:
 				return
@@ -168,16 +152,17 @@ func main() {
 
 	// Wait for a result from any worker
 	var foundAddress *big.Int
-	var foundAddressString string
+	//var foundAddressString string
 	select {
 	case foundAddress = <-resultChan:
-		wif := btc_utils.GenerateWif(foundAddress)
+		wif := btc_utils.GenerateWif(foundAddress)		
+
 		color.Yellow("Chave privada encontrada: %064x\n", foundAddress)
 		color.Yellow("WIF: %s", wif)
 
 		// Obter a data e horário atuais
 		currentTime := time.Now().Format("2006-01-02 15:04:05")
-
+		telegram.TelegramMessage("Chave privada encontrada")
 		// Abrir ou criar o arquivo chaves_encontradas.txt
 		file, err := os.OpenFile("chaves_encontradas.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
@@ -194,7 +179,7 @@ func main() {
 
 		if modoSelecionado == 2 {
 			foundAddressString = fmt.Sprintf("%064x", foundAddress)
-			saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, foundAddressString)
+			utils.saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, foundAddressString)
 		}
 
 		close(privKeyChan)
@@ -213,11 +198,11 @@ func main() {
 }
 
 // start na workers
-func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *big.Int, wg *sync.WaitGroup) {
+func worker(wallets *utils.Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *big.Int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for privKeyInt := range privKeyChan {
 		address := btc_utils.CreatePublicHash160(privKeyInt)
-		if Contains(wallets.Addresses, address) {
+		if utils.Contains(wallets.Addresses, address) {
 			select {
 			case resultChan <- privKeyInt:
 				return

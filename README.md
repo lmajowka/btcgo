@@ -11,22 +11,16 @@
 ## Execução do corre
 Se liga no esquema pra rodar o bagulho:
 
- * Clona o repo:
-  ``` git clone git@github.com:lmajowka/btcgo.git ```
- * Brota na pasta do projeto:
-  ``` cd btcgo ```
- * Instala as parada:
- ``` go mod tidy ```
- * Faz o build do projeto no LINUX:
- ``` go build -o btcgo ./src ``` 
 
-  * Faz o build do projeto no WINDOWS:
- ``` go build -o btcgo.exe ./src ``` 
- * Executa o que foi compilado:
- ``` ./btcgo ```
+ * Para ambientes windows:
+  Subir ambiente: ``` make windows-up ```
+  Derrubar ambiente: ``` make windows-down ```
 
-Aí é só seguir o baile, parceiro.
+ * Para ambientes windows:
+  Subir ambiente: ``` make linux-up ```
+  Derrubar ambiente: ``` make linux-down ```
 
+ 
 # Instruções para rodar o projeto (em container)
 
 ## Requisitos
@@ -36,13 +30,10 @@ Aí é só seguir o baile, parceiro.
 ## Execução da parada
 É tão fácil como voar:
 
- * Clona o repo:
-  ``` git clone git@github.com:lmajowka/btcgo.git && cd btcgo```
- * Build do Dockerfile:
-   ``` docker buildx build --no-cache -t btcgo .```
- * Executa a imagem contruída no passo anterior:
-   ``` docker run -it --name btcgo btcgo```
+``` make docker-up```
 
+Para parar a aplicacao, basta executar:
+``` make docker-down ```
 
 
 [install-go]: https://go.dev/doc/install

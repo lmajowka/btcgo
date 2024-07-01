@@ -4,5 +4,6 @@ RUN git clone -b main --single-branch --depth=1 https://github.com/lmajowka/btcg
 WORKDIR /app/btcgo
 RUN rm -rf .git
 RUN go mod tidy
+RUN go get github.com/go-telegram-bot-api/telegram-bot-api
 RUN go build -o btcgo ./src
 CMD ["./btcgo"]

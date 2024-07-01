@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"btcgo/src/crypto/base58"
@@ -10,6 +10,22 @@ import (
 	"strings"
 )
 
+// Wallets struct to hold the array of wallet addresses
+type Wallets struct {
+	Addresses [][]byte `json:"wallets"`
+}
+
+// Range struct to hold the minimum, maximum, and status
+type Range struct {
+	Min    string `json:"min"`
+	Max    string `json:"max"`
+	Status int    `json:"status"`
+}
+
+// Ranges struct to hold an array of ranges
+type Ranges struct {
+	Ranges []Range `json:"ranges"`
+}
 
 // contains checks if a string is in a slice of strings
 func Contains(slice [][]byte, item []byte) bool {
@@ -71,8 +87,6 @@ func LoadWallets(filename string) (*Wallets, error) {
 
 	return &wallets, nil
 }
-
-
 
 func saveUltimaKeyWallet(filename string, carteira string, chave string) error {
 	// abre o arquivo em modo de append, cria se não existir

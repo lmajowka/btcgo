@@ -1,0 +1,9 @@
+version: '3.4'
+services: 
+
+  btcgo:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    container_name: btcgo
+    env_file: "../.env"
