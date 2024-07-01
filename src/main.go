@@ -262,7 +262,6 @@ func main() {
 	fmt.Printf("Chaves checadas: %s\n", humanize.Comma(int64(keysChecked)))
 	fmt.Printf("Tempo: %.2f seconds\n", elapsedTime)
 	fmt.Printf("Chaves por segundo: %s\n", humanize.Comma(int64(keysPerSecond)))
-
 }
 
 // start na workers - procura todas as carteiras
