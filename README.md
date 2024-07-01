@@ -11,6 +11,7 @@
 ## Execução do corre
 Se liga no esquema pra rodar o bagulho:
 
+  Copiar o arquivo ``` dev.env ``` para ``` .env ``` e alterar os valores para o seu ambiente.
 
  * Para ambientes windows:
 

@@ -11,9 +11,8 @@ import (
 	"runtime"
 	"sync"
 	"time"
-
-	"btcgo/src/crypto/btc_utils"
 	"btcgo/src/utils"
+	"btcgo/src/crypto/btc_utils"
 	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
 )
@@ -151,7 +150,7 @@ func main() {
 
 	// Wait for a result from any worker
 	var foundAddress *big.Int
-	//var foundAddressString string
+	var foundAddressString string
 	select {
 	case foundAddress = <-resultChan:
 		wif := btc_utils.GenerateWif(foundAddress)		
