@@ -1,15 +1,18 @@
 package main
 
 import (
-	"bytes"
+	"context"
 	"fmt"
 	"log"
 	"math/big"
+	"math/rand/v2"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"sync"
+	"syscall"
 	"time"
 
 	"btcgo/src/crypto/btc_utils"
@@ -17,11 +20,6 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
 )
-
-// Wallets struct to hold the array of wallet addresses
-type Wallets struct {
-	Addresses [][]byte `json:"wallets"`
-}
 
 // Range struct to hold the minimum, maximum, and status
 type Range struct {
@@ -35,34 +33,40 @@ type Ranges struct {
 	Ranges []Range `json:"ranges"`
 }
 
-func titulo() {
-	fmt.Println("\x1b[38;2;250;128;114m" + "╔═══════════════════════════════════════╗")
-	fmt.Println("║\x1b[0m\x1b[36m" + "   ____ _______ _____    _____  ____   " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
-	fmt.Println("║\x1b[0m\x1b[36m" + "  |  _ \\__   __/ ____|  / ____|/ __ \\  " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
-	fmt.Println("║\x1b[0m\x1b[36m" + "  | |_) | | | | |      | |  __| |  | | " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
-	fmt.Println("║\x1b[0m\x1b[36m" + "  |  _ <  | | | |      | | |_ | |  | | " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
-	fmt.Println("║\x1b[0m\x1b[36m" + "  | |_) | | | | |____  | |__| | |__| | " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
-	fmt.Println("║\x1b[0m\x1b[36m" + "  |____/  |_|  \\_____|  \\_____|\\____/  " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
-	fmt.Println("║\x1b[0m\x1b[36m" + "                                       " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
-	fmt.Println("╚════\x1b[32m" + "Investidor Internacional - v0.5" + "\x1b[0m\x1b[38;2;250;128;114m════╝" + "\x1b[0m")
-}
+var (
+	// Global Vars
+	Version = "v0.5"
 
-func ClearConsole() {
-	switch runtime.GOOS {
-	case "windows":
-		cmd := exec.Command("cmd", "/c", "cls")
-		cmd.Stdout = os.Stdout
-		cmd.Run()
-	default:
-		cmd := exec.Command("clear")
-		cmd.Stdout = os.Stdout
-		cmd.Run()
+	CharNewLine   = "\n"
+	CharReadline  = '\n'
+	RangeKey      *big.Int
+	PrivKeyMinInt = new(big.Int)
+	PrivKeyMaxInt = new(big.Int)
+
+	// Usado no modo 3
+	StepValue = 1000
+	// Wallets
+	Wallets = make(map[string][]byte)
+	// Create Context
+	ctx, ctxCancel = context.WithCancel(context.Background())
+	// Create a channel to receive results from workers
+	resultChan = make(chan *big.Int)
+	// Variavel to update last processed wallet address
+	lastkey string
+	numCPU  int
+)
+
+// O GO chama esta func automáticamente sempre que inicializa
+func init() {
+	if runtime.GOOS == "windows" {
+		CharNewLine = "\n\r"
+		CharReadline = '\r'
 	}
+	numCPU = runtime.NumCPU()
 }
 
 func main() {
 	green := color.New(color.FgGreen).SprintFunc()
-
 	exePath, err := os.Executable()
 	if err != nil {
 		fmt.Printf("Erro ao obter o caminho do executável: %v\n", err)
@@ -80,79 +84,62 @@ func main() {
 
 	// Ask the user for the range number
 	rangeNumber := PromptRangeNumber(len(ranges.Ranges))
-	wallets, err := LoadWallets(filepath.Join(rootDir, "data", "wallets.json"))
+	// Pergunta sobre modos de usar
+	modoSelecionado := PromptModos(4) // quantidade de modos
+	carteirasalva := fmt.Sprintf("%d", rangeNumber)
+	// função HandleModoSelecionado - onde busca o modo selecionado do usuario. // talvez criar a funcao de favoritar essa opções e iniciar automaticamente?
+	privKeyInt := HandleModoSelecionado(modoSelecionado, ranges, rangeNumber, carteirasalva)
+
+	// Load wallet addresses from JSON file
+	err = LoadWallets(filepath.Join(rootDir, "data", "wallets.json"))
 	if err != nil {
 		log.Fatalf("Failed to load wallets: %v", err)
 	}
-	wallet := wallets.Addresses[rangeNumber-1]
-	// pergunta se deseja verificar todas as carteiras ou apenas uma por vez
-	modoUniqueOrAll := PromptUniqueOrAll()
 
-	// Pergunta sobre modos de usar
-	modoSelecionado := PromptModos(2) // quantidade de modos
-
-    privKeyMinInt := new(big.Int)
-    privKeyMaxInt := new(big.Int)
-    privKeyMinRange := ranges.Ranges[rangeNumber-1].Min
-    privKeyMaxRange := ranges.Ranges[rangeNumber-1].Max
-    privKeyMinInt.SetString(privKeyMinRange[2:], 16)
-    privKeyMaxInt.SetString(privKeyMaxRange[2:], 16)
-
-	var carteirasalva string
-	carteirasalva = fmt.Sprintf("%d", rangeNumber)
-	privKeyInt := new(big.Int)
-
-	// função HandleModoSelecionado - onde busca o modo selecionado do usuario. // talvez criar a funcao de favoritar essa opções e iniciar automaticamente?
-	privKeyInt = HandleModoSelecionado(modoSelecionado, ranges, rangeNumber, privKeyInt, carteirasalva)
-
-	// Load wallet addresses from JSON file
-
-	var keysChecked int64 = 0
+	keysChecked := int64(0)
 	startTime := time.Now()
 
 	// Number of CPU cores to use
-	numCPU := runtime.NumCPU()
-	fmt.Printf("CPUs detectados: %s\n", green(numCPU))
-	runtime.GOMAXPROCS(numCPU)
+	fmt.Printf("CPUs detectados: %s"+CharNewLine, green(numCPU))
 
 	// Ask the user for the number of cpus
-	cpusNumber := PromptCPUNumber(numCPU)
+	cpusNumber := PromptCPUNumber()
 
 	// Create a channel to send private keys to workers
-	privKeyChan := make(chan *big.Int, cpusNumber)
-	// Create a channel to receive results from workers
-	resultChan := make(chan *big.Int)
+	privKeyChan := make(chan *big.Int, cpusNumber+1)
+	runtime.GOMAXPROCS(cpusNumber)
+
 	// Create a wait group to wait for all workers to finish
 	var wg sync.WaitGroup
-
 	// Start worker goroutines
 	for i := 0; i < cpusNumber; i++ {
 		wg.Add(1)
-		if modoUniqueOrAll == 2 {
-			go workerForUniqueFind(wallet, privKeyChan, resultChan, &wg)
-		} else {
-			go worker(wallets, privKeyChan, resultChan, &wg)
-		}
+		go func(cx context.Context) {
+			defer wg.Done()
+			worker(cx, privKeyChan)
+		}(ctx)
 	}
 
-	// Ticker for periodic updates every 5 seconds
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-	done := make(chan struct{})
-
-	// Goroutine to print speed updates
 	go func() {
+		// Ticker for periodic updates every 5 seconds
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
 		for {
 			select {
+			case privKey := <-privKeyChan:
+				lastkey = fmt.Sprintf("%064x", privKey)
+
 			case <-ticker.C:
-				elapsedTime := time.Since(startTime).Seconds()
-				keysPerSecond := float64(keysChecked) / elapsedTime
-				fmt.Printf("Chaves checadas: %s Chaves por segundo: %s\n", humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
-				if modoSelecionado == 2 {				
-					lastKey := fmt.Sprintf("%064x", privKeyInt)
-					saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastKey)
-				}
-			case <-done:
+				go func() {
+					elapsedTime := time.Since(startTime).Seconds()
+					keysPerSecond := float64(keysChecked) / elapsedTime
+					fmt.Printf("Chaves checadas: %s Chaves por segundo: %s"+CharNewLine, humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
+					if modoSelecionado == 2 || modoSelecionado == 3 {
+						saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastkey)
+					}
+				}()
+
+			case <-ctx.Done():
 				return
 			}
 		}
@@ -165,22 +152,49 @@ func main() {
 			privKeyCopy := new(big.Int).Set(privKeyInt)
 			select {
 			case privKeyChan <- privKeyCopy:
-				privKeyInt.Add(privKeyInt, big.NewInt(1))
+				if modoSelecionado == 3 {
+					z := randRange(1, StepValue)
+					y := randRange(1, 10)
+					if y >= 5 {
+						privKeyInt.Add(privKeyInt, big.NewInt(int64(z)))
+					} else {
+						privKeyInt.Sub(privKeyInt, big.NewInt(int64(z)))
+					}
+				} else if modoSelecionado == 4 {
+					key := CalcPrivKey(big.NewFloat(randFloat(1, 99) / 100))
+					privKeyInt.SetString(key, 16)
+				} else {
+					privKeyInt.Add(privKeyInt, big.NewInt(1))
+				}
 				keysChecked++
-			case <-done:
+			case <-ctx.Done():
 				return
 			}
 		}
 	}()
 
+	// Control CTRL+C
+	SysCtrlSignal := make(chan os.Signal, 1)
+	signal.Notify(SysCtrlSignal, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+
 	// Wait for a result from any worker
 	var foundAddress *big.Int
 	var foundAddressString string
 	select {
+	case <-SysCtrlSignal:
+		if modoSelecionado >= 2 {
+			saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastkey)
+		}
+		fmt.Println("Stop Program" + CharNewLine)
+		ctxCancel()
+
 	case foundAddress = <-resultChan:
 		wif := btc_utils.GenerateWif(foundAddress)
-		color.Yellow("Chave privada encontrada: %064x\n", foundAddress)
-		color.Yellow("WIF: %s", wif)
+		color.Yellow(CharNewLine+"Chave privada encontrada: %064x"+CharNewLine, foundAddress)
+		color.Yellow("WIF: %s"+CharNewLine, wif)
+
+		// Parar todas as Go Rotines
+		ctxCancel()
 
 		// Obter a data e horário atuais
 		currentTime := time.Now().Format("2006-01-02 15:04:05")
@@ -198,14 +212,10 @@ func main() {
 			}
 			file.Close()
 		}
-
-		if modoSelecionado == 2 {
+		if modoSelecionado == 2 || modoSelecionado == 3 {
 			foundAddressString = fmt.Sprintf("%064x", foundAddress)
 			saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, foundAddressString)
 		}
-
-		close(privKeyChan)
-
 	}
 
 	// Wait for all workers to finish
@@ -213,38 +223,50 @@ func main() {
 
 	elapsedTime := time.Since(startTime).Seconds()
 	keysPerSecond := float64(keysChecked) / elapsedTime
-	fmt.Printf("Chaves checadas: %s\n", humanize.Comma(int64(keysChecked)))
-	fmt.Printf("Tempo: %.2f seconds\n", elapsedTime)
-	fmt.Printf("Chaves por segundo: %s\n", humanize.Comma(int64(keysPerSecond)))
+	fmt.Printf("Chaves checadas: %s"+CharNewLine, humanize.Comma(int64(keysChecked)))
+	fmt.Printf("Tempo: %.2f seconds"+CharNewLine, elapsedTime)
+	fmt.Printf("Chaves por segundo: %s"+CharNewLine, humanize.Comma(int64(keysPerSecond)))
+}
 
+func randRange(min, max int) int {
+	return rand.IntN(max-min) + min
 }
 
 // start na workers
-func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *big.Int, wg *sync.WaitGroup) {
-	defer wg.Done()
+func worker(ctx context.Context, privKeyChan <-chan *big.Int) {
 	for privKeyInt := range privKeyChan {
+		if ctx.Err() != nil {
+			return
+		}
 		address := btc_utils.CreatePublicHash160(privKeyInt)
-		if Contains(wallets.Addresses, address) {
-			select {
-			case resultChan <- privKeyInt:
-				return
-			default:
-				return
-			}
+		if _, ok := Wallets[string(address)]; ok {
+			resultChan <- privKeyInt
+			return
 		}
 	}
 }
-func workerForUniqueFind(wallet []byte, privKeyChan <-chan *big.Int, resultChan chan<- *big.Int, wg *sync.WaitGroup) {
-	defer wg.Done()
-	for privKeyInt := range privKeyChan {
-		address := btc_utils.CreatePublicHash160(privKeyInt)
-		if bytes.Equal(wallet, address) {
-			select {
-			case resultChan <- privKeyInt:
-				return
-			default:
-				return
-			}
-		}
+
+func titulo() {
+	fmt.Println("\x1b[38;2;250;128;114m" + "╔═══════════════════════════════════════╗")
+	fmt.Println("║\x1b[0m\x1b[36m" + "   ____ _______ _____    _____  ____   " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("║\x1b[0m\x1b[36m" + "  |  _ \\__   __/ ____|  / ____|/ __ \\  " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("║\x1b[0m\x1b[36m" + "  | |_) | | | | |      | |  __| |  | | " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("║\x1b[0m\x1b[36m" + "  |  _ <  | | | |      | | |_ | |  | | " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("║\x1b[0m\x1b[36m" + "  | |_) | | | | |____  | |__| | |__| | " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("║\x1b[0m\x1b[36m" + "  |____/  |_|  \\_____|  \\_____|\\____/  " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("║\x1b[0m\x1b[36m" + "                                       " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("╚════\x1b[32m" + "Investidor Internacional - " + Version + "\x1b[0m\x1b[38;2;250;128;114m════╝" + "\x1b[0m")
+}
+
+func ClearConsole() {
+	switch runtime.GOOS {
+	case "windows":
+		cmd := exec.Command("cmd", "/c", "cls")
+		cmd.Stdout = os.Stdout
+		cmd.Run()
+	default:
+		cmd := exec.Command("clear")
+		cmd.Stdout = os.Stdout
+		cmd.Run()
 	}
 }
