@@ -31,7 +31,7 @@ func PromptRangeNumber(totalRanges int) int {
 	}
 }
 
-func PromptCPUNumber() int {
+func PromptCPUNumber(cpuNumber int) int {
 	reader := bufio.NewReader(os.Stdin)
 	charReadline := '\n'
 
@@ -44,13 +44,33 @@ func PromptCPUNumber() int {
 		input, _ := reader.ReadString(byte(charReadline))
 		input = strings.TrimSpace(input)
 		cpusNumber, err := strconv.Atoi(input)
-		if err == nil && cpusNumber >= 1 && cpusNumber <= 50 {
+		if err == nil && cpusNumber >= 1 && cpusNumber <= cpuNumber {
 			return cpusNumber
 		}
 		fmt.Println("Numero invalido.")
 	}
 }
 
+//perguntar se deseja verificar todas as carteiras ou apenas uma
+func PromptUniqueOrAll() int {
+	reader := bufio.NewReader(os.Stdin)
+	charReadline := '\n'
+
+	if runtime.GOOS == "windows" {
+		charReadline = '\r'
+	}
+
+	for {
+		fmt.Printf("Escolha uma opção:\n 1. Verificar todas as carteiras a cada geração (mais chance) \n 2. Verificar uma carteira por vez (mais desempenho) \n> ")
+		input, _ := reader.ReadString(byte(charReadline))
+		input = strings.TrimSpace(input)
+		modoSelecinado, err := strconv.Atoi(input)
+		if err == nil && (modoSelecinado == 1 || modoSelecinado == 2) {
+			return modoSelecinado
+		}
+		fmt.Println("Modo invalido.")
+	}
+}
 
 // PromptModos prompts the user to select a modo's
 func PromptModos(totalModos int) int {
@@ -73,6 +93,7 @@ func PromptModos(totalModos int) int {
 		fmt.Println("Modo invalido.")
 	}
 }
+
 
 // PromptAuto solicita ao usuário a seleção de um número dentro de um intervalo específico.
 func PromptAuto(pergunta string, totalnumbers int) int {
@@ -101,6 +122,7 @@ func HandleModoSelecionado(modoSelecionado int, ranges *Ranges, rangeNumber int,
         // Initialize privKeyInt with the minimum value of the selected range
         privKeyHex := ranges.Ranges[rangeNumber-1].Min
         privKeyInt.SetString(privKeyHex[2:], 16)
+
     } else if modoSelecionado == 2 {
         verificaKey, err := LoadUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva)
         if err != nil || verificaKey == "" {
