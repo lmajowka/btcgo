@@ -125,7 +125,7 @@ func main() {
 				fmt.Printf("Chaves checadas: %s Chaves por segundo: %s\n", humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
 				if modoSelecionado == 2 {
 					lastKey := fmt.Sprintf("%064x", privKeyInt)
-					utils.saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastKey)
+					utils.SaveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastKey)
 				}
 			case <-done:
 				return
@@ -177,7 +177,7 @@ func main() {
 
 		if modoSelecionado == 2 {
 			foundAddressString = fmt.Sprintf("%064x", foundAddress)
-			utils.saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, foundAddressString)
+			utils.SaveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, foundAddressString)
 		}
 
 		close(privKeyChan)

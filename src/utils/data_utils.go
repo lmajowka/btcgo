@@ -88,7 +88,8 @@ func LoadWallets(filename string) (*Wallets, error) {
 	return &wallets, nil
 }
 
-func saveUltimaKeyWallet(filename string, carteira string, chave string) error {
+// Salva a ultima chave da carteira pesquisada.
+func SaveUltimaKeyWallet(filename string, carteira string, chave string) error {
 	// abre o arquivo em modo de append, cria se não existir
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
