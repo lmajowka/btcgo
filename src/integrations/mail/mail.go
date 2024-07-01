@@ -3,10 +3,9 @@ package mail
 import (
     "fmt"
     "log"
-    "net/smtp"
+    "gopkg.in/mail.v2"
     "os"
 )
-
 // Configurações do servidor SMTP
 smtpHost := os.Getenv("SMTP_HOST")
 smtpPort := os.Getenv("SMTP_PORT")
@@ -17,41 +16,33 @@ destinationEmail := os.Getenv("DESTINATION_EMAIL")
 if smtpHost == "" || smtpPort == "" || smtpUser == "" || smtpPass == "" || destinationEmail == "" {
 	log.Fatal("Variáveis de ambiente SMTP não estão completamente definidas")
 }
+func sendEmail(from string, password string, to []string, subject string, body string) error {
+    m := mail.NewMessage()
+    m.SetHeader("From", from)
+    m.SetHeader("To", to...)
+    m.SetHeader("Subject", subject)
+    m.SetBody("text/plain", body)
 
-func main() {
-    for update := range updates {
-        if update.Message != nil {
-            msg := update.Message.Text
-            chatID := update.Message.Chat.ID
+    d := mail.NewDialer(smtpHost, smtpPort, smtpUser, smtpPass)
 
-            // Enviar resposta no Telegram
-            response := tgbotapi.NewMessage(chatID, "Mensagem recebida: "+msg)
-            bot.Send(response)
-
-            // Enviar e-mail
-            err := sendEmail("destination_email@example.com", "Mensagem do Telegram", msg)
-            if err != nil {
-                log.Printf("Erro ao enviar e-mail: %v", err)
-            } else {
-                log.Printf("E-mail enviado com sucesso!")
-            }
-        }
+    // Enviar o email
+    if err := d.DialAndSend(m); err != nil {
+        return err
     }
+    return nil
 }
 
-// Função para enviar e-mails
-func sendEmail(to, subject, body string) error {
-    from := smtpUser
-    pass := smtpPass
+func main() {
+    from := "seuemail@example.com"
+    password := "suasenha"
+    to := []string{"destinatario@example.com"}
+    subject := "Assunto do Email"
+    body := "Corpo do email"
 
-    msg := "From: " + from + "\n" +
-        "To: " + to + "\n" +
-        "Subject: " + subject + "\n\n" +
-        body
-
-    err := smtp.SendMail(smtpHost+":"+smtpPort,
-        smtp.PlainAuth("", from, pass, smtpHost),
-        from, []string{to}, []byte(msg))
-
-    return err
+    err := sendEmail(from, password, to, subject, body)
+    if err != nil {
+        log.Println("Erro ao enviar email:", err)
+    } else {
+        log.Println("Email enviado com sucesso!")
+    }
 }

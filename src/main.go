@@ -14,7 +14,6 @@ import (
 
 	"btcgo/src/crypto/btc_utils"
 	"btcgo/src/utils"
-	"btcgo/src/integrations/telegram"
 	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
 )
@@ -162,7 +161,7 @@ func main() {
 
 		// Obter a data e horário atuais
 		currentTime := time.Now().Format("2006-01-02 15:04:05")
-		telegram.TelegramMessage("Chave privada encontrada")
+		
 		// Abrir ou criar o arquivo chaves_encontradas.txt
 		file, err := os.OpenFile("chaves_encontradas.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
