@@ -91,6 +91,13 @@ func main() {
 	// Pergunta sobre modos de usar
 	modoSelecionado := PromptModos(2) // quantidade de modos
 
+    privKeyMinInt := new(big.Int)
+    privKeyMaxInt := new(big.Int)
+    privKeyMinRange := ranges.Ranges[rangeNumber-1].Min
+    privKeyMaxRange := ranges.Ranges[rangeNumber-1].Max
+    privKeyMinInt.SetString(privKeyMinRange[2:], 16)
+    privKeyMaxInt.SetString(privKeyMaxRange[2:], 16)
+
 	var carteirasalva string
 	carteirasalva = fmt.Sprintf("%d", rangeNumber)
 	privKeyInt := new(big.Int)
@@ -142,8 +149,17 @@ func main() {
 				keysPerSecond := float64(keysChecked) / elapsedTime
 				fmt.Printf("Chaves checadas: %s Chaves por segundo: %s\n", humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
 				if modoSelecionado == 2 {
+					rangeDiff := new(big.Int)
+					walletDiff := new(big.Int)
+					rangeDiff.Sub(privKeyMaxInt, privKeyMinInt)					
+					walletDiff.Sub(privKeyInt, privKeyMinInt)
+					percentage := new(big.Float).Quo(new(big.Float).SetInt(walletDiff), new(big.Float).SetInt(rangeDiff))
+					percentage.Mul(percentage, big.NewFloat(100))
+					porcentRange := new(big.Float)
+					porcentRange.SetString(percentage.String())				
 					lastKey := fmt.Sprintf("%064x", privKeyInt)
 					saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastKey)
+					fmt.Printf("  A range está em %.2f%%.\n", porcentRange)
 				}
 			case <-done:
 				return
