@@ -107,7 +107,7 @@ func main() {
 
 	// Load wallet addresses from JSON file
 
-	keysChecked := 0
+	var keysChecked int64 = 0
 	startTime := time.Now()
 
 	// Number of CPU cores to use
