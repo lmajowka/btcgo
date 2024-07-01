@@ -148,18 +148,9 @@ func main() {
 				elapsedTime := time.Since(startTime).Seconds()
 				keysPerSecond := float64(keysChecked) / elapsedTime
 				fmt.Printf("Chaves checadas: %s Chaves por segundo: %s\n", humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
-				if modoSelecionado == 2 {
-					rangeDiff := new(big.Int)
-					walletDiff := new(big.Int)
-					rangeDiff.Sub(privKeyMaxInt, privKeyMinInt)					
-					walletDiff.Sub(privKeyInt, privKeyMinInt)
-					percentage := new(big.Float).Quo(new(big.Float).SetInt(walletDiff), new(big.Float).SetInt(rangeDiff))
-					percentage.Mul(percentage, big.NewFloat(100))
-					porcentRange := new(big.Float)
-					porcentRange.SetString(percentage.String())				
+				if modoSelecionado == 2 {				
 					lastKey := fmt.Sprintf("%064x", privKeyInt)
 					saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastKey)
-					fmt.Printf("  A porcentagem está em %.2f%%.\n", porcentRange)
 				}
 			case <-done:
 				return

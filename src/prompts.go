@@ -124,53 +124,45 @@ func HandleModoSelecionado(modoSelecionado int, ranges *Ranges, rangeNumber int,
         privKeyInt.SetString(privKeyHex[2:], 16)
 
     } else if modoSelecionado == 2 {
+		// Definindo as variáveis privKeyMinInt e privKeyMaxInt como big.Int
+		privKeyMinInt := new(big.Int)
+		privKeyMaxInt := new(big.Int)
+		privKeyMin := ranges.Ranges[rangeNumber-1].Min
+		privKeyMax := ranges.Ranges[rangeNumber-1].Max
+		privKeyMinInt.SetString(privKeyMin[2:], 16)
+		privKeyMaxInt.SetString(privKeyMax[2:], 16)
+
         verificaKey, err := LoadUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva)
         if err != nil || verificaKey == "" {
             // FAZER PERGUNTA SE DESEJA INFORMAR O NUMERO DE INCIO DO MODO SEQUENCIAL OU COMEÇAR DO INICIO
             msSequencialouInicio := PromptAuto("Opção 1: Deseja começar do inicio da busca (não efetivo) ou \nOpção 2: Escolher entre o range da carteira informada? \nPor favor numero entre 1 ou 2:", 2)
             if msSequencialouInicio == 2 {
-                // Definindo as variáveis privKeyMinInt e privKeyMaxInt como big.Int
-                privKeyMinInt := new(big.Int)
-                privKeyMaxInt := new(big.Int)
-                privKeyMin := ranges.Ranges[rangeNumber-1].Min
-                privKeyMax := ranges.Ranges[rangeNumber-1].Max
-                privKeyMinInt.SetString(privKeyMin[2:], 16)
-                privKeyMaxInt.SetString(privKeyMax[2:], 16)
-
                 // Calculando a diferença entre privKeyMaxInt e privKeyMinInt
                 rangeKey := new(big.Int).Sub(privKeyMaxInt, privKeyMinInt)
-
                 // Solicitando a porcentagem do range da carteira como entrada
                 var rangeCarteiraSequencialStr string
                 fmt.Print("Informe a porcentagem do range da carteira entre 1 a 100: ")
                 fmt.Scanln(&rangeCarteiraSequencialStr)
-
                 // Substituindo vírgulas por pontos se necessário
                 rangeCarteiraSequencialStr = strings.Replace(rangeCarteiraSequencialStr, ",", ".", -1)
-
                 // Convertendo a porcentagem para um número decimal
                 rangeCarteiraSequencial, err := strconv.ParseFloat(rangeCarteiraSequencialStr, 64)
                 if err != nil {
                     fmt.Println("Erro ao ler porcentagem:", err)
                     return nil
                 }
-
                 // Verificando se a porcentagem está no intervalo válido
                 if rangeCarteiraSequencial < 1 || rangeCarteiraSequencial > 100 {
                     fmt.Println("Porcentagem fora do intervalo válido (1 a 100).")
                     return nil
                 }
-
                 // Calculando o valor de rangeKey multiplicado pela porcentagem
                 rangeMultiplier := new(big.Float).Mul(new(big.Float).SetInt(rangeKey), big.NewFloat(rangeCarteiraSequencial/100.0))
-
                 // Convertendo o resultado para inteiro (arredondamento para baixo)
                 min := new(big.Int)
                 rangeMultiplier.Int(min)
-
                 // Adicionando rangeMultiplier ao valor mínimo (privKeyMinInt)
                 min.Add(privKeyMinInt, min)
-
                 // Verificando o valor final como uma string hexadecimal
                 verificaKey := min.Text(16)
                 privKeyInt.SetString(verificaKey, 16)
@@ -183,6 +175,15 @@ func HandleModoSelecionado(modoSelecionado int, ranges *Ranges, rangeNumber int,
         } else {
             fmt.Printf("Encontrada chave no arquivo ultimaChavePorCarteira.txt pela carteira %s: %s\n", carteirasalva, verificaKey)
             privKeyInt.SetString(verificaKey, 16)
+			rangeDiff := new(big.Int)
+			walletDiff := new(big.Int)
+			rangeDiff.Sub(privKeyMaxInt, privKeyMinInt)					
+			walletDiff.Sub(privKeyInt, privKeyMinInt)
+			percentage := new(big.Float).Quo(new(big.Float).SetInt(walletDiff), new(big.Float).SetInt(rangeDiff))
+			percentage.Mul(percentage, big.NewFloat(100))
+			porcentRange := new(big.Float)
+			porcentRange.SetString(percentage.String())
+			fmt.Printf("A porcentagem dentro do range está em %.2f%%.\n", porcentRange)
         }
     }
     return privKeyInt
