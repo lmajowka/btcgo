@@ -110,7 +110,7 @@ func main() {
 
 	fmt.Println("Posição Inicial: " + privKeyInt.Text(16)) // Imprime em Hexadecimal
 
-	keysChecked := 0
+	var keysChecked int64 = 0
 	startTime := time.Now()
 
 	// Number of CPU cores to use
