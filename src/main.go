@@ -159,7 +159,7 @@ func main() {
 					porcentRange.SetString(percentage.String())				
 					lastKey := fmt.Sprintf("%064x", privKeyInt)
 					saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastKey)
-					fmt.Printf("  A range está em %.2f%%.\n", porcentRange)
+					fmt.Printf("  A porcentagem está em %.2f%%.\n", porcentRange)
 				}
 			case <-done:
 				return
