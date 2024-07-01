@@ -51,6 +51,27 @@ func PromptCPUNumber(cpuNumber int) int {
 	}
 }
 
+// Perguntar se deseja verificar todas as carteiras ou apenas uma
+func PromptUniqueOrAll() int {
+	reader := bufio.NewReader(os.Stdin)
+	charReadline := '\n'
+
+	if runtime.GOOS == "windows" {
+		charReadline = '\r'
+	}
+
+	for {
+		fmt.Printf("\nEscolha uma opção:\n 1. Verificar todas as carteiras a cada geração (mais chance) \n 2. Verificar uma carteira por vez (mais desempenho) \n> ")
+		input, _ := reader.ReadString(byte(charReadline))
+		input = strings.TrimSpace(input)
+		modoSelecinado, err := strconv.Atoi(input)
+		if err == nil && (modoSelecinado == 1 || modoSelecinado == 2) {
+			return modoSelecinado
+		}
+		fmt.Println("Modo invalido.")
+	}
+}
+
 // PromptModos prompts the user to select a modo's
 func PromptModos(totalModos int) int {
 	reader := bufio.NewReader(os.Stdin)
@@ -61,7 +82,7 @@ func PromptModos(totalModos int) int {
 	}
 
 	for {
-		fmt.Printf("Escolha o modo desejado (1 a %d) \n   1 - Modo do início;\n   2 - Modo sequencial (chave do arquivo):\n   3 - Modo Aleatório a cada duas horas\n", totalModos)
+		fmt.Printf("\nEscolha o modo desejado (1 a %d) \n   1 - Modo do início;\n   2 - Modo sequencial (chave do arquivo):\n   3 - Modo Aleatório a cada duas horas\n", totalModos)
 		input, _ := reader.ReadString(byte(charReadline))
 		input = strings.TrimSpace(input)
 		modoSelecinado, err := strconv.Atoi(input)

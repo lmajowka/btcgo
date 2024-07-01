@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"math/big"
@@ -55,11 +56,21 @@ func main() {
 		log.Fatalf("Failed to load ranges: %v", err)
 	}
 
-	color.Cyan("BTC GO - Investidor Internacional")
-	color.Yellow("v0.4 - Fork - https://github.com/MartonLyra/btcgo")
+	ClearConsole()
+	titulo()
 
 	// Ask the user for the range number
 	rangeNumber := PromptRangeNumber(len(ranges.Ranges))
+
+	// Load wallet addresses from JSON file
+	wallets, err := LoadWallets(filepath.Join(rootDir, "data", "wallets.json"))
+	if err != nil {
+		log.Fatalf("Failed to load wallets: %v", err)
+	}
+	wallet := wallets.Addresses[rangeNumber-1]
+
+	// pergunta se deseja verificar todas as carteiras ou apenas uma por vez
+	modoUniqueOrAll := PromptUniqueOrAll()
 
 	// Pergunta sobre modos de usar
 	modoSelecionado := PromptModos(3) // quantidade de modos
@@ -74,12 +85,6 @@ func main() {
 	}
 
 	privKeyInt = HandleModoSelecionado(modoSelecionado, ranges, rangeNumber, privKeyInt, carteirasalva)
-
-	// Load wallet addresses from JSON file
-	wallets, err := LoadWallets(filepath.Join(rootDir, "data", "wallets.json"))
-	if err != nil {
-		log.Fatalf("Failed to load wallets: %v", err)
-	}
 
 	// Marton - Vamos verificar se o range inicial é menor que o range final, exibir o range e o total de combinações:
 	rangeMinHex := ranges.Ranges[rangeNumber-1].Min
@@ -126,7 +131,12 @@ func main() {
 	// Start worker goroutines
 	for i := 0; i < cpusNumber; i++ {
 		wg.Add(1)
-		go worker(wallets, privKeyChan, resultChan, &wg)
+		if modoUniqueOrAll == 2 {
+			go workerForUniqueFind(wallet, privKeyChan, resultChan, &wg)
+		} else {
+			go worker(wallets, privKeyChan, resultChan, &wg)
+		}
+		// go worker(wallets, privKeyChan, resultChan, &wg)
 	}
 
 	// Ticker for periodic updates every 5 seconds
@@ -255,12 +265,28 @@ func main() {
 
 }
 
-// start na workers
+// start na workers - procura todas as carteiras
 func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *big.Int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for privKeyInt := range privKeyChan {
 		address := btc_utils.CreatePublicHash160(privKeyInt)
 		if Contains(wallets.Addresses, address) {
+			select {
+			case resultChan <- privKeyInt:
+				return
+			default:
+				return
+			}
+		}
+	}
+}
+
+// start na workers - procura uma única carteira
+func workerForUniqueFind(wallet []byte, privKeyChan <-chan *big.Int, resultChan chan<- *big.Int, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for privKeyInt := range privKeyChan {
+		address := btc_utils.CreatePublicHash160(privKeyInt)
+		if bytes.Equal(wallet, address) {
 			select {
 			case resultChan <- privKeyInt:
 				return

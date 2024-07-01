@@ -4,7 +4,40 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"os"
+	"os/exec"
+	"runtime"
 )
+
+func titulo() {
+	fmt.Println("\x1b[38;2;250;128;114m" + "╔═══════════════════════════════════════╗")
+	fmt.Println("║\x1b[0m\x1b[36m" + "   ____ _______ _____    _____  ____   " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("║\x1b[0m\x1b[36m" + "  |  _ \\__   __/ ____|  / ____|/ __ \\  " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("║\x1b[0m\x1b[36m" + "  | |_) | | | | |      | |  __| |  | | " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("║\x1b[0m\x1b[36m" + "  |  _ <  | | | |      | | |_ | |  | | " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("║\x1b[0m\x1b[36m" + "  | |_) | | | | |____  | |__| | |__| | " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("║\x1b[0m\x1b[36m" + "  |____/  |_|  \\_____|  \\_____|\\____/  " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("║\x1b[0m\x1b[36m" + "                                       " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
+	fmt.Println("╚═══\x1b[32m" + " Investidor Internacional - v0.55" + "\x1b[0m\x1b[38;2;250;128;114m ══╝" + "\x1b[0m")
+	fmt.Println("")
+	fmt.Println(" \x1b[32m" + "Fork by Marton Lyra" + "\x1b[0m\x1b[38;2;250;128;114m" + "\x1b[0m")
+	fmt.Println(" \x1b[32m" + "Com todas as funcionalidades da v0.5 original e um pouco mais" + "\x1b[0m\x1b[38;2;250;128;114m" + "\x1b[0m")
+	fmt.Println(" \x1b[32m" + "https://github.com/MartonLyra/btcgo" + "\x1b[0m\x1b[38;2;250;128;114m" + "\x1b[0m")
+	fmt.Println("")
+}
+
+func ClearConsole() {
+	switch runtime.GOOS {
+	case "windows":
+		cmd := exec.Command("cmd", "/c", "cls")
+		cmd.Stdout = os.Stdout
+		cmd.Run()
+	default:
+		cmd := exec.Command("clear")
+		cmd.Stdout = os.Stdout
+		cmd.Run()
+	}
+}
 
 func updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt *big.Int, modoSelecionado int) {
 	rangeSize := new(big.Int).Sub(rangeMaxInt, rangeMinInt)
