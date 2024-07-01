@@ -39,6 +39,8 @@ Se liga no esquema pra rodar o bagulho:
 ## Execução da parada
 É tão fácil como voar:
 
+Copiar o arquivo ``` dev.env ``` para ``` .env ``` e alterar os valores para o seu ambiente.
+
 ``` make docker-up```
 
 Para parar a aplicacao, basta executar:
