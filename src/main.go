@@ -6,7 +6,6 @@ import (
 	"log"
 	"math/big"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sync"
@@ -35,32 +34,14 @@ type Ranges struct {
 	Ranges []Range `json:"ranges"`
 }
 
-func titulo() {
-	fmt.Println("\x1b[38;2;250;128;114m" + "╔═══════════════════════════════════════╗")
-	fmt.Println("║\x1b[0m\x1b[36m" + "   ____ _______ _____    _____  ____   " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
-	fmt.Println("║\x1b[0m\x1b[36m" + "  |  _ \\__   __/ ____|  / ____|/ __ \\  " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
-	fmt.Println("║\x1b[0m\x1b[36m" + "  | |_) | | | | |      | |  __| |  | | " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
-	fmt.Println("║\x1b[0m\x1b[36m" + "  |  _ <  | | | |      | | |_ | |  | | " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
-	fmt.Println("║\x1b[0m\x1b[36m" + "  | |_) | | | | |____  | |__| | |__| | " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
-	fmt.Println("║\x1b[0m\x1b[36m" + "  |____/  |_|  \\_____|  \\_____|\\____/  " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
-	fmt.Println("║\x1b[0m\x1b[36m" + "                                       " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
-	fmt.Println("╚════\x1b[32m" + "Investidor Internacional - v0.5" + "\x1b[0m\x1b[38;2;250;128;114m════╝" + "\x1b[0m")
-}
-
-func ClearConsole() {
-	switch runtime.GOOS {
-	case "windows":
-		cmd := exec.Command("cmd", "/c", "cls")
-		cmd.Stdout = os.Stdout
-		cmd.Run()
-	default:
-		cmd := exec.Command("clear")
-		cmd.Stdout = os.Stdout
-		cmd.Run()
-	}
-}
-
 func main() {
+
+	// Define constantes de configuração:
+	const (
+		tickerTime2printStatistics = 5 * time.Second // Tempo para imprimir os dados processados no console
+		tickerTime2randomAddress   = 1 * time.Minute // Modo 3 - Aleatório - Ticker para obter um número aleatório dentro do range
+	)
+
 	green := color.New(color.FgGreen).SprintFunc()
 
 	exePath, err := os.Executable()
@@ -80,32 +61,54 @@ func main() {
 
 	// Ask the user for the range number
 	rangeNumber := PromptRangeNumber(len(ranges.Ranges))
+
+	// Load wallet addresses from JSON file
 	wallets, err := LoadWallets(filepath.Join(rootDir, "data", "wallets.json"))
 	if err != nil {
 		log.Fatalf("Failed to load wallets: %v", err)
 	}
 	wallet := wallets.Addresses[rangeNumber-1]
+
 	// pergunta se deseja verificar todas as carteiras ou apenas uma por vez
 	modoUniqueOrAll := PromptUniqueOrAll()
 
 	// Pergunta sobre modos de usar
-	modoSelecionado := PromptModos(2) // quantidade de modos
-
-    privKeyMinInt := new(big.Int)
-    privKeyMaxInt := new(big.Int)
-    privKeyMinRange := ranges.Ranges[rangeNumber-1].Min
-    privKeyMaxRange := ranges.Ranges[rangeNumber-1].Max
-    privKeyMinInt.SetString(privKeyMinRange[2:], 16)
-    privKeyMaxInt.SetString(privKeyMaxRange[2:], 16)
+	modoSelecionado := PromptModos(3) // quantidade de modos
 
 	var carteirasalva string
 	carteirasalva = fmt.Sprintf("%d", rangeNumber)
 	privKeyInt := new(big.Int)
 
 	// função HandleModoSelecionado - onde busca o modo selecionado do usuario. // talvez criar a funcao de favoritar essa opções e iniciar automaticamente?
+	if modoSelecionado < 3 {
+		privKeyInt = HandleModoSelecionado(modoSelecionado, ranges, rangeNumber, privKeyInt, carteirasalva)
+	}
+
 	privKeyInt = HandleModoSelecionado(modoSelecionado, ranges, rangeNumber, privKeyInt, carteirasalva)
 
-	// Load wallet addresses from JSON file
+	// Marton - Vamos verificar se o range inicial é menor que o range final, exibir o range e o total de combinações:
+	rangeMinHex := ranges.Ranges[rangeNumber-1].Min
+	rangeMaxHex := ranges.Ranges[rangeNumber-1].Max
+	rangeMinInt := new(big.Int)
+	rangeMinInt.SetString(rangeMinHex[2:], 16)
+	rangeMaxInt := new(big.Int)
+	rangeMaxInt.SetString(rangeMaxHex[2:], 16)
+	combinacoes := new(big.Int).Sub(rangeMaxInt, rangeMinInt)
+	combinacoesFloat, _ := new(big.Float).SetInt(combinacoes).Float64() // Converte combinacoes para float64
+	fmt.Println("Range.Min: " + rangeMinInt.Text(16))                   // Imprime em Hexadecimal
+	fmt.Println("Range.Max: " + rangeMaxInt.Text(16))                   // Imprime em Hexadecimal
+	fmt.Println("Total de Combinações: " + combinacoes.Text(10))        // Imprime em base decimal
+	if rangeMinInt.Cmp(rangeMaxInt) > 0 {
+		fmt.Println("Erro: o range inicial não pode ser maior que o range final.")
+		os.Exit(1)
+	}
+
+	// Caso tenha escolhido o modo aleatório, vamos obter os valores iniciais:
+	if modoSelecionado == 3 {
+		updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt, modoSelecionado)
+	}
+
+	fmt.Println("Posição Inicial: " + privKeyInt.Text(16)) // Imprime em Hexadecimal
 
 	var keysChecked int64 = 0
 	startTime := time.Now()
@@ -133,12 +136,39 @@ func main() {
 		} else {
 			go worker(wallets, privKeyChan, resultChan, &wg)
 		}
+		// go worker(wallets, privKeyChan, resultChan, &wg)
 	}
 
 	// Ticker for periodic updates every 5 seconds
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(tickerTime2printStatistics)
 	defer ticker.Stop()
 	done := make(chan struct{})
+
+	// Ticker para obter um número aleatório dentro do range a cada hora:
+	tickerRandom := time.NewTicker(tickerTime2randomAddress)
+	defer tickerRandom.Stop()
+
+	// Variavel to update last processed wallet address
+	var lastkey string
+
+	// Vamos obter uma nova posição aleatória a cada hora:
+	go func() {
+		for range tickerRandom.C {
+			updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt, modoSelecionado)
+		}
+	}()
+
+	// Goroutine to update last processed wallet address
+	go func() {
+		for {
+			select {
+			case privKey := <-privKeyChan:
+				lastkey = fmt.Sprintf("%064x", privKey)
+			case <-done:
+				return
+			}
+		}
+	}()
 
 	// Goroutine to print speed updates
 	go func() {
@@ -147,11 +177,27 @@ func main() {
 			case <-ticker.C:
 				elapsedTime := time.Since(startTime).Seconds()
 				keysPerSecond := float64(keysChecked) / elapsedTime
-				fmt.Printf("Chaves checadas: %s Chaves por segundo: %s\n", humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
-				if modoSelecionado == 2 {				
-					lastKey := fmt.Sprintf("%064x", privKeyInt)
-					saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastKey)
+				remainingKeys := combinacoesFloat - float64(keysChecked)                    // Calcula o número de chaves restantes a serem verificadas
+				estimatedTime := remainingKeys / keysPerSecond                              // Calcula o tempo estimado para conclusão em segundos
+				posicaoPercent := calculatePercentage(privKeyInt, rangeMinInt, rangeMaxInt) // Calcula a posição, em porcentagem
+				posicaoPercentStr := fmt.Sprintf("%.12f", posicaoPercent)                   // Formata com 12 casas decimais
+				fmt.Printf("%s - Posição: 0x%s (%s%%) ; Chaves checadas: %s ; Chaves por segundo: %s ; Tempo restante: %s\n", time.Now().Format("2006-01-02 15:04:05"), privKeyInt.Text(16), posicaoPercentStr, humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)), formatDuration(estimatedTime))
+				if modoSelecionado == 2 {
+					saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastkey)
 				}
+
+				// Marton - Verifica se a chave atual é maior que o range final:
+				if privKeyInt.Cmp(rangeMaxInt) > 0 {
+					fmt.Println("O privKeyInt atual é maior que o range final. Vamos calcular nova posição aleatória.")
+					updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt, modoSelecionado)
+				}
+
+				// Marton - Verifica se a chave atual é menor que o range inicial:
+				if privKeyInt.Cmp(rangeMinInt) < 0 {
+					fmt.Println("O privKeyInt atual é menor que o range inicial. Vamos calcular nova posição aleatória.")
+					updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt, modoSelecionado)
+				}
+
 			case <-done:
 				return
 			}
@@ -216,10 +262,9 @@ func main() {
 	fmt.Printf("Chaves checadas: %s\n", humanize.Comma(int64(keysChecked)))
 	fmt.Printf("Tempo: %.2f seconds\n", elapsedTime)
 	fmt.Printf("Chaves por segundo: %s\n", humanize.Comma(int64(keysPerSecond)))
-
 }
 
-// start na workers
+// start na workers - procura todas as carteiras
 func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *big.Int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for privKeyInt := range privKeyChan {
@@ -234,6 +279,8 @@ func worker(wallets *Wallets, privKeyChan <-chan *big.Int, resultChan chan<- *bi
 		}
 	}
 }
+
+// start na workers - procura uma única carteira
 func workerForUniqueFind(wallet []byte, privKeyChan <-chan *big.Int, resultChan chan<- *big.Int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for privKeyInt := range privKeyChan {
