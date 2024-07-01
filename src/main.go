@@ -56,7 +56,7 @@ func main() {
 	}
 
 	color.Cyan("BTC GO - Investidor Internacional")
-	color.Yellow("v0.4")
+	color.Yellow("v0.4 - Fork - https://github.com/MartonLyra/btcgo")
 
 	// Ask the user for the range number
 	rangeNumber := PromptRangeNumber(len(ranges.Ranges))
@@ -114,7 +114,7 @@ func main() {
 	runtime.GOMAXPROCS(numCPU)
 
 	// Ask the user for the number of cpus
-	cpusNumber := PromptCPUNumber()
+	cpusNumber := PromptCPUNumber(numCPU)
 
 	// Create a channel to send private keys to workers
 	privKeyChan := make(chan *big.Int, cpusNumber)
