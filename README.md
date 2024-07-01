@@ -13,10 +13,12 @@ Se liga no esquema pra rodar o bagulho:
 
 
  * Para ambientes windows:
+
   Subir ambiente: ``` make windows-up ```
   Derrubar ambiente: ``` make windows-down ```
 
- * Para ambientes windows:
+ * Para ambientes linux:
+
   Subir ambiente: ``` make linux-up ```
   Derrubar ambiente: ``` make linux-down ```
 
@@ -33,6 +35,7 @@ Se liga no esquema pra rodar o bagulho:
 ``` make docker-up```
 
 Para parar a aplicacao, basta executar:
+
 ``` make docker-down ```
 
 
