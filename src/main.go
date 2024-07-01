@@ -100,18 +100,18 @@ func main() {
 	done := make(chan struct{})
 
 	// Variavel to update last processed wallet address
-	var lastkey string
-	// Goroutine to update last processed wallet address
-	go func() {
-		for {
-			select {
-			case privKey := <-privKeyChan:
-				lastkey = fmt.Sprintf("%064x", privKey)
-			case <-done:
-				return
-			}
-		}
-	}()
+	// var lastkey string
+	// // Goroutine to update last processed wallet address
+	// go func() {
+	// 	for {
+	// 		select {
+	// 		case privKey := <-privKeyChan:
+	// 			lastkey = fmt.Sprintf("%064x", privKey)
+	// 		case <-done:
+	// 			return
+	// 		}
+	// 	}
+	// }()
 
 	// Goroutine to print speed updates
 	go func() {
@@ -122,7 +122,8 @@ func main() {
 				keysPerSecond := float64(keysChecked) / elapsedTime
 				fmt.Printf("Chaves checadas: %s Chaves por segundo: %s\n", humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
 				if modoSelecionado == 2 {
-					saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastkey)
+					lastKey := fmt.Sprintf("%064x", privKeyInt)
+					saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastKey)
 				}
 			case <-done:
 				return
