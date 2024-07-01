@@ -31,7 +31,7 @@ func PromptRangeNumber(totalRanges int) int {
 	}
 }
 
-func PromptCPUNumber() int {
+func PromptCPUNumber(cpuNumber int) int {
 	reader := bufio.NewReader(os.Stdin)
 	charReadline := '\n'
 
@@ -44,7 +44,7 @@ func PromptCPUNumber() int {
 		input, _ := reader.ReadString(byte(charReadline))
 		input = strings.TrimSpace(input)
 		cpusNumber, err := strconv.Atoi(input)
-		if err == nil && cpusNumber >= 1 && cpusNumber <= 50 {
+		if err == nil && cpusNumber >= 1 && cpusNumber <= cpuNumber {
 			return cpusNumber
 		}
 		fmt.Println("Numero invalido.")

@@ -109,7 +109,7 @@ func main() {
 	runtime.GOMAXPROCS(numCPU)
 
 	// Ask the user for the number of cpus
-	cpusNumber := PromptCPUNumber()
+	cpusNumber := PromptCPUNumber(numCPU)
 
 	// Create a channel to send private keys to workers
 	privKeyChan := make(chan *big.Int, cpusNumber)
