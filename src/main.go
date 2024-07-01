@@ -91,6 +91,13 @@ func main() {
 	// Pergunta sobre modos de usar
 	modoSelecionado := PromptModos(2) // quantidade de modos
 
+    privKeyMinInt := new(big.Int)
+    privKeyMaxInt := new(big.Int)
+    privKeyMinRange := ranges.Ranges[rangeNumber-1].Min
+    privKeyMaxRange := ranges.Ranges[rangeNumber-1].Max
+    privKeyMinInt.SetString(privKeyMinRange[2:], 16)
+    privKeyMaxInt.SetString(privKeyMaxRange[2:], 16)
+
 	var carteirasalva string
 	carteirasalva = fmt.Sprintf("%d", rangeNumber)
 	privKeyInt := new(big.Int)
@@ -141,7 +148,7 @@ func main() {
 				elapsedTime := time.Since(startTime).Seconds()
 				keysPerSecond := float64(keysChecked) / elapsedTime
 				fmt.Printf("Chaves checadas: %s Chaves por segundo: %s\n", humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
-				if modoSelecionado == 2 {
+				if modoSelecionado == 2 {				
 					lastKey := fmt.Sprintf("%064x", privKeyInt)
 					saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastKey)
 				}
