@@ -20,7 +20,7 @@ import (
 
 // Wallets struct to hold the array of wallet addresses
 type Wallets struct {
-	Addresses       [][]byte `json:"wallets"`
+	Addresses [][]byte `json:"wallets"`
 }
 
 // Range struct to hold the minimum, maximum, and status
@@ -44,7 +44,7 @@ func titulo() {
 	fmt.Println("║\x1b[0m\x1b[36m" + "  | |_) | | | | |____  | |__| | |__| | " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
 	fmt.Println("║\x1b[0m\x1b[36m" + "  |____/  |_|  \\_____|  \\_____|\\____/  " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
 	fmt.Println("║\x1b[0m\x1b[36m" + "                                       " + "\x1b[0m\x1b[38;2;250;128;114m" + "║")
-	fmt.Println("╚════\x1b[32m" + "Investidor Internacional - v0.4" + "\x1b[0m\x1b[38;2;250;128;114m════╝" + "\x1b[0m")
+	fmt.Println("╚════\x1b[32m" + "Investidor Internacional - v0.5" + "\x1b[0m\x1b[38;2;250;128;114m════╝" + "\x1b[0m")
 }
 
 func ClearConsole() {
