@@ -14,13 +14,19 @@ Se liga no esquema pra rodar o bagulho:
 
  * Para ambientes windows:
 
-  Subir ambiente: ``` make windows-up ```
-  Derrubar ambiente: ``` make windows-down ```
+  Subir ambiente: 
+  ``` make windows-up ```
+
+  Derrubar ambiente: 
+  ``` make windows-down ```
 
  * Para ambientes linux:
 
-  Subir ambiente: ``` make linux-up ```
-  Derrubar ambiente: ``` make linux-down ```
+  Subir ambiente: 
+  ``` make linux-up ```
+
+  Derrubar ambiente: 
+  ``` make linux-down ```
 
  
 # Instruções para rodar o projeto (em container)
