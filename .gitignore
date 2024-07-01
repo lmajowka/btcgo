@@ -35,3 +35,7 @@ ultimaChavePorCarteira.txt
 
 # Ignore variaveis de ambiente
 .env
+
+# Nao subir arquivos do GO, deixar ser compilado na subida do ambiente, para evitar problemas com versoes.
+go.mod
+go.sum
