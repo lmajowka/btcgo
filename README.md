@@ -55,10 +55,11 @@ Aí é só seguir o baile, parceiro.
 * No Modo 3 - Aleatório, de 2 em 2 horas (tempo definido em tickerTime2randomAddress), o sistema sorteira uma nova posição dentro do range da carteira escolhida;
 * Caso a nova posição esteja no início da carteira (primeiros 4%) ou ao final da carteira (últimos 1%), uma nova posição é sorteada aleatoriamente
 * Quando uma nova posição é escolhida, sua posição em forma gráfica é exibida;
-* Sempre checamos se a chave sendo buscada está dentro do range da carteira. Não queremos perder tempo pesquisando fora do range.
+* A cada 5 segundos checamos se a chave sendo buscada está dentro do range da carteira. Não queremos perder tempo pesquisando fora do range.
 
 ### Exibição com mais detalhes
 * A cada 5 segundos, as informações da busca são melhores detalhados, conforme exemplo abaixo:
+
 ``` 2024-07-01 12:33:21 - Posição: 0x3e129edc38f6c1781 (92.977301609240%) ; Chaves checadas: 235,600,258 ; Chaves por segundo: 795,614 ; Tempo restante: 1012429 anos```
 
 
