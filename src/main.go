@@ -94,7 +94,7 @@ func main() {
 
 	// Caso tenha escolhido o modo aleatório, vamos obter os valores iniciais:
 	if modoSelecionado == 3 {
-		updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt)
+		updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt, modoSelecionado)
 	}
 
 	fmt.Println("Posição Inicial: " + privKeyInt.Text(16)) // Imprime em Hexadecimal
@@ -129,7 +129,7 @@ func main() {
 	done := make(chan struct{})
 
 	// Ticker para obter um número aleatório dentro do range a cada hora:
-	tickerRandom := time.NewTicker(2 * time.Hour)
+	tickerRandom := time.NewTicker(30 * time.Minute)
 	defer tickerRandom.Stop()
 
 	// Variavel to update last processed wallet address
@@ -138,7 +138,7 @@ func main() {
 	// Vamos obter uma nova posição aleatória a cada hora:
 	go func() {
 		for range tickerRandom.C {
-			updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt)
+			updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt, modoSelecionado)
 		}
 	}()
 
@@ -165,7 +165,7 @@ func main() {
 				estimatedTime := remainingKeys / keysPerSecond                              // Calcula o tempo estimado para conclusão em segundos
 				posicaoPercent := calculatePercentage(privKeyInt, rangeMinInt, rangeMaxInt) // Calcula a posição, em porcentagem
 				posicaoPercentStr := fmt.Sprintf("%.12f", posicaoPercent)                   // Formata com 12 casas decimais
-				fmt.Printf("%s - Posição HEX: 0x%s ; Posicao: %s%% ; Chaves checadas: %s ; Chaves por segundo: %s ; Tempo restante: %s\n", time.Now().Format("2006-01-02 15:04:05"), privKeyInt.Text(16), posicaoPercentStr, humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)), formatDuration(estimatedTime))
+				fmt.Printf("%s - Posição: 0x%s (%s%%) ; Chaves checadas: %s ; Chaves por segundo: %s ; Tempo restante: %s\n", time.Now().Format("2006-01-02 15:04:05"), privKeyInt.Text(16), posicaoPercentStr, humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)), formatDuration(estimatedTime))
 				if modoSelecionado == 2 {
 					saveUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastkey)
 				}
@@ -173,24 +173,13 @@ func main() {
 				// Marton - Verifica se a chave atual é maior que o range final:
 				if privKeyInt.Cmp(rangeMaxInt) > 0 {
 					fmt.Println("O privKeyInt atual é maior que o range final. Vamos calcular nova posição aleatória.")
-					updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt)
+					updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt, modoSelecionado)
 				}
 
 				// Marton - Verifica se a chave atual é menor que o range inicial:
 				if privKeyInt.Cmp(rangeMinInt) < 0 {
 					fmt.Println("O privKeyInt atual é menor que o range inicial. Vamos calcular nova posição aleatória.")
-					updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt)
-				}
-
-				if modoSelecionado == 3 {
-					if posicaoPercent < 10 {
-						fmt.Println("Não queremos processar os primeiros 10% do range. Vamos calcular nova posição aleatória.")
-						updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt)
-					}
-					if posicaoPercent > 99 {
-						fmt.Println("Não queremos processar os últimos 1% do range. Vamos calcular nova posição aleatória.")
-						updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt)
-					}
+					updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt, modoSelecionado)
 				}
 
 			case <-done:
@@ -294,7 +283,7 @@ func calculatePercentage(pos, min, max *big.Int) float64 {
 	return percentage - 1
 }
 
-// Marton - A função recebe um tempo estimado para conclusão e retorna string com anos, meses, dias, horas e minutos:
+// Marton - A função recebe um tempo estimado para conclusão e retorna string com anos;
 func formatDuration(seconds float64) string {
 	// Converte os segundos em um valor inteiro
 	totalSeconds := int64(seconds)
@@ -311,18 +300,20 @@ func formatDuration(seconds float64) string {
 	years := totalSeconds / secondsInYear
 	totalSeconds %= secondsInYear
 
-	months := totalSeconds / secondsInMonth
-	totalSeconds %= secondsInMonth
+	/*
+		months := totalSeconds / secondsInMonth
+		totalSeconds %= secondsInMonth
 
-	days := totalSeconds / secondsInDay
-	totalSeconds %= secondsInDay
+		days := totalSeconds / secondsInDay
+		totalSeconds %= secondsInDay
+	*/
 
 	// Monta a string formatada
-	formattedDuration := fmt.Sprintf("%d anos, %d meses, %d dias", years, months, days)
+	formattedDuration := fmt.Sprintf("%d anos" /*, %d mes(es), %d dia(s)"*/, years /*, months, days*/)
 	return formattedDuration
 }
 
-func updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt *big.Int) {
+func updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt *big.Int, modoSelecionado int) {
 	rangeSize := new(big.Int).Sub(rangeMaxInt, rangeMinInt)
 	randomNum, err := rand.Int(rand.Reader, rangeSize)
 	if err != nil {
@@ -337,7 +328,19 @@ func updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt *big.Int) {
 	// Representação gráfica da porcentagem:
 	graphicRepresentation := generateGraphicRepresentation(posicaoPercent)
 
-	fmt.Printf("\nMovendo para nova posição aleatória: %s ; Nova posição: %s  -  %s\n\n", privKeyInt.Text(16), posicaoPercentStr, graphicRepresentation)
+	fmt.Printf("\nMovendo para nova posição aleatória: %s ; Nova posição: %s  -  %s\n", privKeyInt.Text(16), posicaoPercentStr, graphicRepresentation)
+
+	if modoSelecionado == 3 {
+		if posicaoPercent < 4 {
+			fmt.Println("Não queremos processar os primeiros 4% do range. Vamos re-calcular nova posição aleatória.")
+			updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt, modoSelecionado)
+		}
+		if posicaoPercent > 99 {
+			fmt.Println("Não queremos processar os últimos 1% do range. Vamos re-calcular nova posição aleatória.")
+			updatePrivKeyInt(privKeyInt, rangeMinInt, rangeMaxInt, modoSelecionado)
+		}
+	}
+
 	fmt.Println()
 
 }
