@@ -17,7 +17,10 @@ func HandleModSelected(modoSelecionado int, ranges *domain.Ranges, rangeNumber i
 		verificaKey, err := LoadLastKeyWallet("ultimaChavePorCarteira.txt", carteirasalva)
 		if err != nil || verificaKey == "" {
 			// FAZER PERGUNTA SE DESEJA INFORMAR O NUMERO DE INCIO DO MODO SEQUENCIAL OU COMEÇAR DO INICIO
-			msSequencialouInicio := AutoPrompt("Opção 1: Deseja começar do inicio da busca (não efetivo) ou \nOpção 2: Escolher entre o range da carteira informada? \nPor favor numero entre 1 ou 2:", 2)
+			msSequencialouInicio := PromptForIntInRange(
+				"\n\nOpção 1: Deseja começar do inicio da busca (não efetivo) ou \nOpção 2: Escolher entre o range da carteira informada? \n\nPor favor numero entre 1 ou 2: ",
+				"Número inválido. Escolha entre 1 ou 2.",
+				1, 2)
 			if msSequencialouInicio == 2 {
 				// Definindo as variáveis privKeyMinInt e privKeyMaxInt como big.Int
 				privKeyMinInt := new(big.Int)
