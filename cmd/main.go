@@ -105,7 +105,6 @@ func main() {
 
 	// Send private keys to the workers
 	go func() {
-		defer close(privKeyChan)
 		for {
 			privKeyCopy := new(big.Int).Set(privKeyInt)
 			select {
@@ -148,13 +147,17 @@ func main() {
 			foundAddressString = fmt.Sprintf("%064x", foundAddress)
 			_ = utils.SaveLastKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, foundAddressString)
 		}
-
-		close(privKeyChan)
-
 	}
 
 	// Wait for all workers to finish
 	wg.Wait()
+
+	// close all channels
+	defer func() {
+		close(privKeyChan)
+		close(resultChan)
+		close(done)
+	}()
 
 	elapsedTime := time.Since(startTime).Seconds()
 	keysPerSecond := float64(keysChecked) / elapsedTime
