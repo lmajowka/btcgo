@@ -106,7 +106,7 @@ func main() {
 	cpusNumber := PromptCPUNumber()
 
 	// Create a channel to send private keys to workers
-	privKeyChan := make(chan *big.Int, cpusNumber+1)
+	privKeyChan := make(chan *big.Int, cpusNumber*100000)
 	runtime.GOMAXPROCS(cpusNumber)
 
 	// Create a wait group to wait for all workers to finish
