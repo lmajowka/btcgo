@@ -86,22 +86,23 @@ func HandleModoSelecionado(modoSelecionado int, ranges *Ranges, rangeNumber int,
 	switch modoSelecionado {
 	case 1:
 		// Initialize privKeyInt with the minimum value of the selected range
-		privKeyHex := ranges.Ranges[rangeNumber-1].Min
+		privKeyHex := ranges.Range[rangeNumber-1].Min
 		privKeyInt.SetString(privKeyHex[2:], 16)
+		LoadUltimaKeyWallet("ultimaChavePorCarteira.json", carteirasalva)
 	case 2:
-		privKeyMin := ranges.Ranges[rangeNumber-1].Min
-		privKeyMax := ranges.Ranges[rangeNumber-1].Max
+		privKeyMin := ranges.Range[rangeNumber-1].Min
+		privKeyMax := ranges.Range[rangeNumber-1].Max
 		PrivKeyMinInt.SetString(privKeyMin[2:], 16)
 		PrivKeyMaxInt.SetString(privKeyMax[2:], 16)
 
-		verificaKey, err := LoadUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva)
+		verificaKey, err := LoadUltimaKeyWallet("ultimaChavePorCarteira.json", carteirasalva)
 		if err != nil || verificaKey == "" {
 			// FAZER PERGUNTA SE DESEJA INFORMAR O NUMERO DE INCIO DO MODO SEQUENCIAL OU COMEÇAR DO INICIO
 			msSequencialouInicio := PromptAuto("Opção 1: Deseja começar do inicio da busca (não efetivo)"+CharNewLine+"Opção 2: Escolher entre o range da carteira informada"+CharNewLine+"Por favor numero entre 1 ou 2 : ", 2)
 			if msSequencialouInicio == 2 {
 				// Definindo as variáveis privKeyMinInt e privKeyMaxInt como big.Int
-				privKeyMin := ranges.Ranges[rangeNumber-1].Min
-				privKeyMax := ranges.Ranges[rangeNumber-1].Max
+				privKeyMin := ranges.Range[rangeNumber-1].Min
+				privKeyMax := ranges.Range[rangeNumber-1].Max
 				PrivKeyMinInt.SetString(privKeyMin[2:], 16)
 				PrivKeyMaxInt.SetString(privKeyMax[2:], 16)
 
@@ -124,16 +125,17 @@ func HandleModoSelecionado(modoSelecionado int, ranges *Ranges, rangeNumber int,
 					fmt.Println("Porcentagem fora do intervalo válido (1 a 100).")
 					return nil
 				}
-				verificaKey = CalcPrivKey(big.NewFloat(rangeCarteiraSequencial / 100.0))
+				xVal := rangeCarteiraSequencial / 100.0
+				verificaKey = CalcPrivKey(big.NewFloat(xVal))
 				privKeyInt.SetString(verificaKey, 16)
 				fmt.Printf("Range informado, iniciando : %s"+CharNewLine, verificaKey)
 			} else {
-				verificaKey = ranges.Ranges[rangeNumber-1].Min
+				verificaKey = ranges.Range[rangeNumber-1].Min
 				privKeyInt.SetString(verificaKey[2:], 16)
-				fmt.Printf("Nenhuma chave privada salva encontrada, iniciando do começo. %s:"+CharNewLine+" %s"+CharNewLine, carteirasalva, verificaKey)
+				fmt.Printf("Nenhuma chave privada salva encontrada, iniciando do começo %s:%s"+CharNewLine, carteirasalva, verificaKey)
 			}
 		} else {
-			fmt.Printf("Encontrada chave no arquivo ultimaChavePorCarteira.txt pela carteira %s:"+CharNewLine+" %s"+CharNewLine, carteirasalva, verificaKey)
+			fmt.Printf("Encontrada chave no arquivo ultimaChavePorCarteira.json pela carteira %s:"+CharNewLine+" %s"+CharNewLine, carteirasalva, verificaKey)
 			privKeyInt.SetString(verificaKey, 16)
 			rangeDiff := new(big.Int)
 			walletDiff := new(big.Int)
@@ -150,10 +152,10 @@ func HandleModoSelecionado(modoSelecionado int, ranges *Ranges, rangeNumber int,
 		if StepValue == 0 {
 			StepValue = 1
 		}
-		verificaKey, err := LoadUltimaKeyWallet("ultimaChavePorCarteira.txt", carteirasalva)
+		verificaKey, err := LoadUltimaKeyWallet("ultimaChavePorCarteira.json", carteirasalva)
 		if err != nil || verificaKey == "" {
-			privKeyMin := ranges.Ranges[rangeNumber-1].Min
-			privKeyMax := ranges.Ranges[rangeNumber-1].Max
+			privKeyMin := ranges.Range[rangeNumber-1].Min
+			privKeyMax := ranges.Range[rangeNumber-1].Max
 			PrivKeyMinInt.SetString(privKeyMin[2:], 16)
 			PrivKeyMaxInt.SetString(privKeyMax[2:], 16)
 			// Calculando a diferença entre privKeyMaxInt e privKeyMinInt
@@ -162,12 +164,13 @@ func HandleModoSelecionado(modoSelecionado int, ranges *Ranges, rangeNumber int,
 			privKeyInt.SetString(verificaKey, 16)
 			fmt.Printf("Range informado, iniciando : %s"+CharNewLine, verificaKey)
 		} else {
-			fmt.Printf("Encontrada chave no arquivo ultimaChavePorCarteira.txt pela carteira %s:"+CharNewLine+" %s"+CharNewLine, carteirasalva, verificaKey)
+			fmt.Printf("Encontrada chave no arquivo ultimaChavePorCarteira.json pela carteira %s:"+CharNewLine+" %s"+CharNewLine, carteirasalva, verificaKey)
 			privKeyInt.SetString(verificaKey, 16)
 		}
 	case 4:
-		privKeyMin := ranges.Ranges[rangeNumber-1].Min
-		privKeyMax := ranges.Ranges[rangeNumber-1].Max
+		LoadUltimaKeyWallet("ultimaChavePorCarteira.json", carteirasalva)
+		privKeyMin := ranges.Range[rangeNumber-1].Min
+		privKeyMax := ranges.Range[rangeNumber-1].Max
 		PrivKeyMinInt.SetString(privKeyMin[2:], 16)
 		PrivKeyMaxInt.SetString(privKeyMax[2:], 16)
 		// Calculando a diferença entre privKeyMaxInt e privKeyMinInt
