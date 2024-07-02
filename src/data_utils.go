@@ -2,24 +2,12 @@ package main
 
 import (
 	"btcgo/src/crypto/base58"
-	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
-	"fmt"
 	"strings"
 )
-
-
-// contains checks if a string is in a slice of strings
-func Contains(slice [][]byte, item []byte) bool {
-	for _, a := range slice {
-		if bytes.Equal(a, item) {
-			return true
-		}
-	}
-	return false
-}
 
 // loadRanges loads ranges from a JSON file
 func LoadRanges(filename string) (*Ranges, error) {
@@ -43,36 +31,31 @@ func LoadRanges(filename string) (*Ranges, error) {
 }
 
 // loadWallets loads wallet addresses from a JSON file
-func LoadWallets(filename string) (*Wallets, error) {
+func LoadWallets(filename string) error {
 	file, err := os.Open(filename)
 	if err != nil {
-		return nil, err
+
+		return err
 	}
 	defer file.Close()
 
 	bytes, err := ioutil.ReadAll(file)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
 	type WalletsTemp struct {
 		Addresses []string `json:"wallets"`
 	}
-
 	var walletsTemp WalletsTemp
 	if err := json.Unmarshal(bytes, &walletsTemp); err != nil {
-		return nil, err
+		return err
 	}
-
-	var wallets Wallets
+	//var wallets Wallets
 	for _, address := range walletsTemp.Addresses {
-		wallets.Addresses = append(wallets.Addresses, base58.Decode(address)[1:21])
+		Wallets[string(base58.Decode(address)[1:21])] = base58.Decode(address)[1:21]
 	}
-
-	return &wallets, nil
+	return nil
 }
-
-
 
 func saveUltimaKeyWallet(filename string, carteira string, chave string) error {
 	// abre o arquivo em modo de append, cria se não existir
@@ -117,28 +100,26 @@ func saveUltimaKeyWallet(filename string, carteira string, chave string) error {
 	return nil
 }
 
-
-
 func LoadUltimaKeyWallet(filename string, carteira string) (string, error) {
-    // Busca todo o conteúdo atual do arquivo
-    data, err := os.ReadFile(filename)
-    if err != nil {
-        return "", err
-    }
+	// Busca todo o conteúdo atual do arquivo
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return "", err
+	}
 
-    lines := strings.Split(string(data), "\n")
+	lines := strings.Split(string(data), "\n")
 
-    // Verifica se a carteira já existe no arquivo
-    for _, line := range lines {
-        parts := strings.SplitN(line, "|", 2) // Divide a linha em duas partes pelo "|"
-        if len(parts) != 2 {
-            continue // Ignora linhas mal formatadas sem "|"
-        }
-        if parts[0] == carteira {
-            return parts[1], nil
-        }
-    }
+	// Verifica se a carteira já existe no arquivo
+	for _, line := range lines {
+		parts := strings.SplitN(line, "|", 2) // Divide a linha em duas partes pelo "|"
+		if len(parts) != 2 {
+			continue // Ignora linhas mal formatadas sem "|"
+		}
+		if parts[0] == carteira {
+			return parts[1], nil
+		}
+	}
 
-    // Retorna erro se a carteira não for encontrada
-    return "", fmt.Errorf("carteira %s não encontrada", carteira)
+	// Retorna erro se a carteira não for encontrada
+	return "", fmt.Errorf("carteira %s não encontrada", carteira)
 }
