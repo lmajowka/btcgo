@@ -31,8 +31,11 @@ func main() {
 		log.Fatalf("Failed to load ranges: %v", err)
 	}
 
+	utils.Clear()
+	utils.Title()
+
 	color.Cyan("BTC GO - Investidor Internacional")
-	color.Yellow("v0.4")
+	color.Yellow("v0.5")
 
 	// Ask the user for the range number
 	rangeNumber := utils.PromptRangeNumber(len(ranges.Ranges))

@@ -4,5 +4,5 @@ RUN git clone -b main --single-branch --depth=1 https://github.com/lmajowka/btcg
 WORKDIR /app/btcgo
 RUN rm -rf .git
 RUN go mod tidy
-RUN go build -o btcgo ./src
+RUN go build -o btcgo ./cmd/main.go
 CMD ["./btcgo"]
