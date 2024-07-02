@@ -35,7 +35,7 @@ func main() {
 	utils.Title()
 
 	color.Cyan("BTC GO - Investidor Internacional")
-	color.Yellow("v0.5")
+	color.Yellow("v0.6")
 
 	// Ask the user for the range number
 	rangeNumber := utils.PromptRangeNumber(len(ranges.Ranges))
@@ -85,20 +85,6 @@ func main() {
 	defer ticker.Stop()
 	done := make(chan struct{})
 
-	// Variavel to update last processed wallet address
-	var lastkey string
-	// Goroutine to update last processed wallet address
-	go func() {
-		for {
-			select {
-			case privKey := <-privKeyChan:
-				lastkey = fmt.Sprintf("%064x", privKey)
-			case <-done:
-				return
-			}
-		}
-	}()
-
 	// Goroutine to print speed updates
 	go func() {
 		for {
@@ -108,7 +94,8 @@ func main() {
 				keysPerSecond := float64(keysChecked) / elapsedTime
 				fmt.Printf("Chaves checadas: %s Chaves por segundo: %s\n", humanize.Comma(int64(keysChecked)), humanize.Comma(int64(keysPerSecond)))
 				if modoSelecionado == 2 {
-					_ = utils.SaveLastKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastkey)
+					lastKey := fmt.Sprintf("%064x", privKeyInt)
+					_ = utils.SaveLastKeyWallet("ultimaChavePorCarteira.txt", carteirasalva, lastKey)
 				}
 			case <-done:
 				return
