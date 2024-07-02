@@ -18,7 +18,7 @@ func HandleModSelected(modoSelecionado int, ranges *domain.Ranges, rangeNumber i
 		if err != nil || verificaKey == "" {
 			// FAZER PERGUNTA SE DESEJA INFORMAR O NUMERO DE INCIO DO MODO SEQUENCIAL OU COMEÇAR DO INICIO
 			msSequencialouInicio := PromptForIntInRange(
-				"Opção 1: Deseja começar do inicio da busca (não efetivo) ou \nOpção 2: Escolher entre o range da carteira informada? \nPor favor numero entre 1 ou 2: ",
+				"\n\nOpção 1: Deseja começar do inicio da busca (não efetivo) ou \nOpção 2: Escolher entre o range da carteira informada? \n\nPor favor numero entre 1 ou 2: ",
 				"Número inválido. Escolha entre 1 ou 2.",
 				1, 2)
 			if msSequencialouInicio == 2 {
