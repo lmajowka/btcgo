@@ -18,10 +18,10 @@ Se liga no esquema pra rodar o bagulho:
  * Instala as parada:
  ``` go mod tidy ```
  * Faz o build do projeto no LINUX:
- ``` go build -o btcgo ./src ``` 
+ ``` go build -o btcgo ./cmd/main.go ``` 
 
   * Faz o build do projeto no WINDOWS:
- ``` go build -o btcgo.exe ./src ``` 
+ ``` go build -o btcgo.exe ./cmd/main.go ``` 
  * Executa o que foi compilado:
  ``` ./btcgo ```
 
