@@ -22,8 +22,8 @@ type dbase struct {
 }
 
 type TestedKeys struct {
-	Carteira string `gorm:"primaryKey; not null"`
 	Key      string `gorm:"primaryKey; not null"`
+	Carteira string `gorm:"index; not null"`
 	DataHora string
 }
 
@@ -59,9 +59,9 @@ func (db *dbase) InsertKey(carteira, key string) error {
 }
 
 // Verify if Exist key
-func (db *dbase) ExistKey(carteira, key string) bool {
+func (db *dbase) ExistKey(key string) bool {
 	var get TestedKeys
-	result := db.dbConn.First(&get, "Carteira=? AND Key=?", carteira, key)
+	result := db.dbConn.First(&get, "Key=?", key)
 	//log.Println(result.Error)
 	return result.Error == nil
 }

@@ -56,6 +56,7 @@ func RequestData() {
 		}
 	} else if App.Modo == 3 {
 		App.USEDB = promptUseDB(2)
+		App.Keys.SetRecs(promptNumRecsRandom())
 	}
 }
 
@@ -83,9 +84,16 @@ func promptMods(totalModos int) int {
 
 // PromptModos prompts the user to select a modo's
 func promptUseDB(totalModos int) int {
-	requestStr := fmt.Sprint("\nUtiliza BaseDados para controlar repetiçóes (NOTA: Opcao ainda em teste)?\nModo Random com DB: 1\nModo Random sem DB: 2\n\nEscolha o modo: ")
+	requestStr := "\nUtiliza BaseDados para controlar repetiçóes?\nModo Random com DB (NOTA: Opcao ainda em teste): 1\nModo Random sem DB: 2\n\nEscolha o modo: "
 	errorStr := "Modo invalido."
 	return promptForIntInRange(requestStr, errorStr, 1, totalModos)
+}
+
+// PromptModos prompts the user to select a modo's
+func promptNumRecsRandom() int {
+	requestStr := "\nNumero registos por cada random (ex. 10000): "
+	errorStr := "Modo invalido."
+	return promptForIntInRange(requestStr, errorStr, 1, 0)
 }
 
 // PromptAuto solicita ao usuário a seleção de um número dentro de um intervalo específico.
@@ -98,6 +106,11 @@ func promptForIntInRange(request_str string, error_str string, mim int, max int)
 		input, _ := reader.ReadString(byte(charReadline))
 		input = strings.TrimSpace(input)
 		resposta, err := strconv.Atoi(input)
+		if max == 0 {
+			if err == nil && resposta >= mim {
+				return resposta
+			}
+		}
 		if err == nil && resposta >= mim && resposta <= max {
 			return resposta
 		}

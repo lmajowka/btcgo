@@ -24,6 +24,8 @@ type GenKeys struct {
 	KeyChannel   chan *big.Int
 	PrivKeyInt   *big.Int
 	IsStarted    bool
+
+	NumRecsRandom int
 }
 
 // Criar Instancia
@@ -108,7 +110,7 @@ func (g *GenKeys) Start() {
 					xFail := 0
 					for {
 						if App.Modo == 3 {
-							if !App.DB.ExistKey(App.Carteira, fmt.Sprintf("%064x", g.PrivKeyInt)) {
+							if !App.DB.ExistKey(fmt.Sprintf("%064x", g.PrivKeyInt)) {
 								break
 							} else {
 								//log.Println("(3)key tested", fmt.Sprintf("%064x", g.PrivKeyInt))
@@ -117,7 +119,7 @@ func (g *GenKeys) Start() {
 								//log.Println("(3)find other", fmt.Sprintf("%064x", g.PrivKeyInt))
 							}
 						} else if App.Modo == 31 {
-							if !App.DB.ExistKey(App.Carteira, fmt.Sprintf("%064x", g.PrivKeyInt)) {
+							if !App.DB.ExistKey(fmt.Sprintf("%064x", g.PrivKeyInt)) {
 								break
 							} else {
 								if xFail > 100 {
@@ -146,7 +148,7 @@ func (g *GenKeys) Start() {
 					g.fromPercent()
 				} else {
 					if App.Modo == 31 {
-						if xTmpRandomCtrl > 10000 {
+						if xTmpRandomCtrl > g.NumRecsRandom {
 							// Na proxima chave volta a fazer um random
 							App.Modo = 3
 							xTmpRandomCtrl = 0
@@ -173,6 +175,11 @@ func (g GenKeys) GetTotalKeys() float64 {
 // Get Last Key
 func (g *GenKeys) GetLastKey() *big.Int {
 	return g.PrivKeyInt
+}
+
+// Set Numero de Resc no Random
+func (g *GenKeys) SetRecs(recs int) {
+	g.NumRecsRandom = recs
 }
 
 // Gerar um valor % random
