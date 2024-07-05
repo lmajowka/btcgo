@@ -32,7 +32,7 @@ func RequestData() {
 	App.Wallets.SetFindWallet(App.RangeNumber)
 
 	// Pergunta sobre modos de usar
-	App.Modo = promptMods(2) // quantidade de modos
+	App.Modo = promptMods(3) // quantidade de modos
 
 	if App.Modo == 2 {
 		App.DesdeInicio = false
@@ -74,7 +74,7 @@ func promptRangeNumber() int {
 
 // PromptModos prompts the user to select a modo's
 func promptMods(totalModos int) int {
-	requestStr := fmt.Sprintf("\n\nEscolha os modos que deseja de (1 a %d)\n\nModo do inicio: 1\nModo sequencial(chave do arquivo): 2\n\nEscolha o modo: ", totalModos)
+	requestStr := fmt.Sprintf("\n\nEscolha os modos que deseja de (1 a %d)\n\nModo do inicio: 1\nModo sequencial(chave do arquivo): 2\nModo Random: 3\n\nEscolha o modo: ", totalModos)
 	errorStr := "Modo invalido."
 	return promptForIntInRange(requestStr, errorStr, 1, totalModos)
 }

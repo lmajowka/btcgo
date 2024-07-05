@@ -7,7 +7,6 @@ package core
 import (
 	"btcgo/cmd/utils"
 	"context"
-	"fmt"
 	"log"
 	"math/big"
 	"path/filepath"
@@ -62,9 +61,6 @@ func NewApp() {
 
 	// Set Number Max of CPUs
 	App.setCPUs()
-
-	// Find Start Position
-	App.findStartPos()
 
 	// Start
 	App.start()
@@ -128,52 +124,6 @@ func (a *AppStruct) consolePrompts() {
 // Set CPUs
 func (a *AppStruct) setCPUs() {
 	runtime.GOMAXPROCS(a.MaxWorkers)
-}
-
-// Find Start Position
-func (a *AppStruct) findStartPos() {
-	switch a.Modo {
-	case 1:
-		a.posInicio()
-
-	case 2:
-		if !a.DesdeInicio {
-			key, err := a.LastKey.GetLastKey(a.Carteira)
-			if err != nil || key == "" {
-				privKeyMinInt := new(big.Int)
-				privKeyMaxInt := new(big.Int)
-				privKeyMin, _ := a.Ranges.GetMin(a.RangeNumber)
-				privKeyMax, _ := a.Ranges.GetMax(a.RangeNumber)
-				privKeyMinInt.SetString(privKeyMin[2:], 16)
-				privKeyMaxInt.SetString(privKeyMax[2:], 16)
-				// Calculando a diferença entre privKeyMaxInt e privKeyMinInt
-				rangeKey := new(big.Int).Sub(privKeyMaxInt, privKeyMinInt)
-				// Calculando o valor de rangeKey multiplicado pela porcentagem
-				rangeMultiplier := new(big.Float).Mul(new(big.Float).SetInt(rangeKey), big.NewFloat(a.StartPosPercent/100.0))
-				// Convertendo o resultado para inteiro (arredondamento para baixo)
-				min := new(big.Int)
-				rangeMultiplier.Int(min)
-				// Adicionando rangeMultiplier ao valor mínimo (privKeyMinInt)
-				min.Add(privKeyMinInt, min)
-				// Verificando o valor final como uma string hexadecimal
-				key := min.Text(16)
-				a.Keys.PrivKeyInt.SetString(key, 16)
-				fmt.Printf("Range informado, iniciando: %s\n", key)
-			} else {
-				a.Keys.PrivKeyInt.SetString(key, 16)
-				fmt.Printf("Encontrada chave no arquivo. Carteira %s: %s\n", a.Carteira, key)
-			}
-		} else {
-			a.posInicio()
-		}
-	}
-}
-
-// Set o Range desde o inicio
-func (a *AppStruct) posInicio() {
-	privKeyHex, _ := a.Ranges.GetMin(a.RangeNumber)
-	//log.Println(privKeyHex, a.RangeNumber)
-	a.Keys.PrivKeyInt.SetString(privKeyHex[2:], 16)
 }
 
 // Start App Calc
