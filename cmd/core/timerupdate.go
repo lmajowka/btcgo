@@ -50,7 +50,7 @@ func (t TimerUpdater) tickerProcessor() {
 			case <-t.Ticker.C:
 				keyscheck := App.Keys.GetTotalKeys()
 				elapsedTime := time.Since(t.StartTime).Seconds()
-				fmt.Printf("Chaves checadas: %s Chaves por segundo: %s\n", humanize.Comma(int64(keyscheck)), humanize.Comma(int64(keyscheck/elapsedTime)))
+				fmt.Printf("Chaves checadas: %s Chaves por segundo: %s Ultima chave checada: %064x\n", humanize.Comma(int64(keyscheck)), humanize.Comma(int64(keyscheck/elapsedTime)), App.Keys.GetLastKey())
 				App.LastKey.SetSaveLastKey(App.Carteira, fmt.Sprintf("%064x", App.Keys.GetLastKey()))
 
 			case <-t.Ctx.Done():
