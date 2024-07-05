@@ -25,6 +25,7 @@ type AppStruct struct {
 	Ticker  *TimerUpdater
 	Workers *Workers
 	Keys    *GenKeys
+	DB      *dbase
 
 	// Channels
 	ResultChannel chan *utils.ResultDataStruct
@@ -96,6 +97,7 @@ func appInit() *AppStruct {
 		Ticker:  NewTicker(newContext),
 		Workers: NewWorkers(newContext, keych, resultChannel),
 		Keys:    NewGenKeys(newContext, keych),
+		DB:      NewDatabase(filepath.Join(rootDir, "data", "processedKeys.db")),
 	}
 }
 

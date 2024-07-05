@@ -17,7 +17,7 @@ import (
 
 type ResultDataStruct struct {
 	Wallet   string
-	Key      big.Int
+	Key      *big.Int
 	Wif      string
 	HoraData string
 }
@@ -50,7 +50,7 @@ func (rs Results) saveData(data *ResultDataStruct) error {
 	file, err := os.OpenFile(rs.FileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err == nil {
 		defer file.Close()
-		_, err = file.WriteString(fmt.Sprintf("Data/Hora: %s | Chave privada: %064x | WIF: %s | Wallet: %s\n", data.HoraData, &data.Key, data.Wif, data.Wallet))
+		_, err = file.WriteString(fmt.Sprintf("Data/Hora: %s | Chave privada: %064x | WIF: %s | Wallet: %s\n", data.HoraData, data.Key, data.Wif, data.Wallet))
 	}
 	return err
 }
@@ -62,7 +62,7 @@ func (rs *Results) Start() {
 			select {
 			case data := <-rs.ResultChannel:
 				color.Yellow("Wallet: %s\n", data.Wallet)
-				color.Yellow("Chave privada encontrada: %064x\n", &data.Key)
+				color.Yellow("Chave privada encontrada: %064x\n", data.Key)
 				color.Yellow("WIF: %s", data.Wif)
 				if err := rs.saveData(data); err != nil {
 					fmt.Println("Erro ao escrever no arquivo:", err)

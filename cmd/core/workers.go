@@ -73,7 +73,7 @@ func (w *Workers) run() {
 		if App.Wallets.Exist(wallet) {
 			w.ResultChannel <- &utils.ResultDataStruct{
 				Wallet:   wallet,
-				Key:      *privKeyInt,
+				Key:      privKeyInt,
 				Wif:      utils.GenerateWif(privKeyInt),
 				HoraData: time.Now().Format("2006-01-02 15:04:05"),
 			}
