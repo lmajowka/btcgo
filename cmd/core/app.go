@@ -50,6 +50,7 @@ func NewApp() {
 	defer func() {
 		close(App.ResultChannel)
 		close(App.KeyChannel)
+		App.DB.Stop()
 	}()
 
 	// Load Files
@@ -98,7 +99,7 @@ func appInit() *AppStruct {
 		Ticker:  NewTicker(newContext),
 		Workers: NewWorkers(newContext, keych, resultChannel),
 		Keys:    NewGenKeys(newContext, keych),
-		DB:      NewDatabase(filepath.Join(rootDir, "data", "processedKeys.db")),
+		DB:      NewDatabase(),
 	}
 }
 
@@ -134,10 +135,11 @@ func (a *AppStruct) start() {
 	// Change Channel Size
 	a.KeyChannel = make(chan *big.Int, a.MaxWorkers)
 	// Start
-	a.Results.Start() // Start Rotina que grava os resultados
-	a.Ticker.Start(5) // Inicia as actualizaçóes da ultima chave
-	a.Keys.Start()    // Gerar Chaves
-	a.Workers.Start() // Inicia os workers
+	a.DB.Start(a.Carteira) // Criar db para esta carteira
+	a.Results.Start()      // Start Rotina que grava os resultados
+	a.Ticker.Start(5)      // Inicia as actualizaçóes da ultima chave
+	a.Keys.Start()         // Gerar Chaves
+	a.Workers.Start()      // Inicia os workers
 }
 
 // Stop App

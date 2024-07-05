@@ -135,7 +135,7 @@ func (g *GenKeys) Start() {
 							}
 						}
 					}
-					App.DB.InsertKey(App.Carteira, fmt.Sprintf("%064x", g.PrivKeyInt))
+					App.DB.InsertKey(fmt.Sprintf("%064x", g.PrivKeyInt))
 				}
 			}
 

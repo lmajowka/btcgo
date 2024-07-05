@@ -84,7 +84,7 @@ func promptMods(totalModos int) int {
 
 // PromptModos prompts the user to select a modo's
 func promptUseDB(totalModos int) int {
-	requestStr := "\nUtiliza BaseDados para controlar repetiçóes?\nModo Random com DB (NOTA: Opcao ainda em teste): 1\nModo Random sem DB: 2\n\nEscolha o modo: "
+	requestStr := "\nUtiliza BaseDados para controlar repetiçóes?\nModo Random com DB: 1\nModo Random sem DB: 2\n\nEscolha o modo: "
 	errorStr := "Modo invalido."
 	return promptForIntInRange(requestStr, errorStr, 1, totalModos)
 }

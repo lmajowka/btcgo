@@ -7,70 +7,55 @@
 package core
 
 import (
+	"btcgo/cmd/utils"
 	"log"
+	"path/filepath"
 	"time"
 
-	//"gorm.io/driver/sqlite" // Sqlite driver based on CGO
-	"github.com/glebarez/sqlite" // Pure go SQLite driver, checkout https://github.com/glebarez/sqlite for details
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	badger "github.com/dgraph-io/badger/v4"
 )
 
 type dbase struct {
-	dbConn *gorm.DB
-	dbName string
-}
-
-type TestedKeys struct {
-	Key      string `gorm:"primaryKey; not null"`
-	Carteira string `gorm:"index; not null"`
-	DataHora string
+	dbConn *badger.DB
+	DBName string
 }
 
 // Criar instancia
-func NewDatabase(fileName string) *dbase {
-	db, err := gorm.Open(sqlite.Open(fileName), &gorm.Config{
-		Logger: logger.Discard,
-	})
-	if err != nil {
-		log.Fatal("Cant open database", err)
-	}
-	err = db.AutoMigrate(&TestedKeys{})
+func NewDatabase() *dbase {
+	return &dbase{}
+}
+
+// Start
+func (db *dbase) Start(carteira string) {
+	rootDir, _ := utils.GetPath()
+	op := badger.DefaultOptions(filepath.Join(rootDir, "db", carteira+".db"))
+	op.Logger = nil
+	dbo, err := badger.Open(op)
 	if err != nil {
 		log.Fatal(err)
 	}
-	return &dbase{
-		dbConn: db,
-		dbName: fileName,
-	}
+	db.dbConn = dbo
 }
 
 // Add Key to DB
-func (db *dbase) InsertKey(carteira, key string) error {
-	result := db.dbConn.Create(TestedKeys{
-		Key:      key,
-		Carteira: carteira,
-		DataHora: time.Now().Format("2006-01-02 15:04:05"),
+func (db *dbase) InsertKey(key string) error {
+	err := db.dbConn.Update(func(tx *badger.Txn) error {
+		err := tx.Set([]byte(key), []byte(time.Now().Format("2006-01-02 15:04:05")))
+		return err
 	})
-	if result.Error != nil {
-		log.Println("INSERT Db error", result.Error)
-	}
-	return result.Error
+	return err
 }
 
 // Verify if Exist key
 func (db *dbase) ExistKey(key string) bool {
-	var get TestedKeys
-	result := db.dbConn.First(&get, "Key=?", key)
-	//log.Println(result.Error)
-	return result.Error == nil
+	err := db.dbConn.View(func(tx *badger.Txn) error {
+		_, err := tx.Get([]byte(key))
+		return err
+	})
+	return err == nil
 }
 
-// Apaga todas as chaves para a carteira
-func (db *dbase) Delete(carteira string) error {
-	result := db.dbConn.Delete(carteira)
-	if result.Error != nil {
-		log.Println("DELETE Db error", result.Error)
-	}
-	return result.Error
+// Stop
+func (db *dbase) Stop() {
+	db.dbConn.Close()
 }
