@@ -57,8 +57,6 @@ func NewApp() {
 		log.Fatalln(err)
 	}
 
-	// Start WebServer Api
-
 	// Request Prompts
 	App.consolePrompts()
 
@@ -70,24 +68,6 @@ func NewApp() {
 
 	// Start
 	App.start()
-
-	// Control CTRL+C
-	/*
-		SysCtrlSignal := make(chan os.Signal, 1)
-		signal.Notify(SysCtrlSignal, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
-		for {
-			select {
-			case <-SysCtrlSignal:
-				log.Println("Stop Request")
-				App.Stop(true)
-				return
-			case <-App.Ctx.Done():
-				log.Println("finished")
-				App.Stop(false)
-				return
-			}
-		}
-	*/
 
 	<-App.Ctx.Done()
 	log.Println("finished")
@@ -219,10 +199,5 @@ func (a *AppStruct) Stop(saveLastKey bool) {
 	}
 	a.Ticker.Stop()
 	a.Results.Stop()
-
-	// Save Last Key
-	if saveLastKey {
-		a.LastKey.SetSaveLastKey(a.Carteira, fmt.Sprintf("%064x", a.Keys.GetLastKey()))
-	}
 	a.CtxCancel()
 }
