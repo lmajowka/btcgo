@@ -54,6 +54,8 @@ func RequestData() {
 				App.StartPosPercent, _ = strconv.ParseFloat(rangeCarteiraSequencialStr, 64)
 			}
 		}
+	} else if App.Modo == 3 {
+		App.USEDB = promptUseDB(2)
 	}
 }
 
@@ -75,6 +77,13 @@ func promptRangeNumber() int {
 // PromptModos prompts the user to select a modo's
 func promptMods(totalModos int) int {
 	requestStr := fmt.Sprintf("\n\nEscolha os modos que deseja de (1 a %d)\n\nModo do inicio: 1\nModo sequencial(chave do arquivo): 2\nModo Random: 3\n\nEscolha o modo: ", totalModos)
+	errorStr := "Modo invalido."
+	return promptForIntInRange(requestStr, errorStr, 1, totalModos)
+}
+
+// PromptModos prompts the user to select a modo's
+func promptUseDB(totalModos int) int {
+	requestStr := fmt.Sprint("\nUtiliza BaseDados para controlar repetiçóes (NOTA: Opcao ainda em teste)?\nModo Random com DB: 1\nModo Random sem DB: 2\n\nEscolha o modo: ")
 	errorStr := "Modo invalido."
 	return promptForIntInRange(requestStr, errorStr, 1, totalModos)
 }

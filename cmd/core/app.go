@@ -35,6 +35,7 @@ type AppStruct struct {
 	Carteira        string
 	RangeNumber     int // id range slice
 	Modo            int
+	USEDB           int
 	MaxWorkers      int
 	DesdeInicio     bool
 	StartPosPercent float64

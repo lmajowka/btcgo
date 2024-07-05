@@ -103,8 +103,7 @@ func (g *GenKeys) Start() {
 	go func() {
 		xTmpRandomCtrl := 0 // Despois de fazer random testa 10000 chaves seguintes
 		for {
-			// Num futuro para usar uma bd com os testados
-			/*
+			if App.USEDB == 1 {
 				if App.Modo == 3 || App.Modo == 31 {
 					xFail := 0
 					for {
@@ -112,10 +111,10 @@ func (g *GenKeys) Start() {
 							if !App.DB.ExistKey(App.Carteira, fmt.Sprintf("%064x", g.PrivKeyInt)) {
 								break
 							} else {
-								log.Println("(3)key tested", fmt.Sprintf("%064x", g.PrivKeyInt))
+								//log.Println("(3)key tested", fmt.Sprintf("%064x", g.PrivKeyInt))
 								App.StartPosPercent = g.genRandom()
 								g.fromPercent()
-								log.Println("(3)find other", fmt.Sprintf("%064x", g.PrivKeyInt))
+								//log.Println("(3)find other", fmt.Sprintf("%064x", g.PrivKeyInt))
 							}
 						} else if App.Modo == 31 {
 							if !App.DB.ExistKey(App.Carteira, fmt.Sprintf("%064x", g.PrivKeyInt)) {
@@ -125,10 +124,10 @@ func (g *GenKeys) Start() {
 									App.Modo = 3
 									xFail = 0
 								} else {
-									log.Println("(31)key tested", fmt.Sprintf("%064x", g.PrivKeyInt))
+									//log.Println("(31)key tested", fmt.Sprintf("%064x", g.PrivKeyInt))
 									x := g.PrivKeyInt.Add(g.PrivKeyInt, big.NewInt(1))
 									g.PrivKeyInt = new(big.Int).Set(x)
-									log.Println("(31)find other", fmt.Sprintf("%064x \n %064x", x, g.PrivKeyInt))
+									//log.Println("(31)find other", fmt.Sprintf("%064x \n %064x", x, g.PrivKeyInt))
 									xFail++
 								}
 							}
@@ -136,7 +135,7 @@ func (g *GenKeys) Start() {
 					}
 					App.DB.InsertKey(App.Carteira, fmt.Sprintf("%064x", g.PrivKeyInt))
 				}
-			*/
+			}
 
 			privKeyCopy := new(big.Int).Set(g.PrivKeyInt)
 			select {
