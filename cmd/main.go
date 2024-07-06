@@ -11,6 +11,7 @@ import (
 )
 
 func main() {
+
 	version := "v0.6.1"
 
 	utils.ClearConsole()

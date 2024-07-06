@@ -1,4 +1,4 @@
-# BTC GO v0.5.1
+# BTC GO v0.6.0
 
 # Instruções para rodar o projeto (na sua máquina)
 
