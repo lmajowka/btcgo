@@ -24,6 +24,8 @@ type GenKeys struct {
 	KeyChannel   chan *big.Int
 	PrivKeyInt   *big.Int
 	IsStarted    bool
+
+	NumRecsRandom int
 }
 
 // Criar Instancia
@@ -62,6 +64,8 @@ func (g *GenKeys) findStartPos() {
 	case 3:
 		App.StartPosPercent = g.genRandom()
 		g.fromPercent()
+		App.Modo = 31
+		//log.Println("Encotrada uma nova chave", App.StartPosPercent, "%")
 	}
 }
 
@@ -101,6 +105,40 @@ func (g *GenKeys) Start() {
 	go func() {
 		xTmpRandomCtrl := 0 // Despois de fazer random testa 10000 chaves seguintes
 		for {
+			if App.USEDB == 1 {
+				if App.Modo == 3 || App.Modo == 31 {
+					xFail := 0
+					for {
+						if App.Modo == 3 {
+							if !App.DB.ExistKey(fmt.Sprintf("%064x", g.PrivKeyInt)) {
+								break
+							} else {
+								//log.Println("(3)key tested", fmt.Sprintf("%064x", g.PrivKeyInt))
+								App.StartPosPercent = g.genRandom()
+								g.fromPercent()
+								//log.Println("(3)find other", fmt.Sprintf("%064x", g.PrivKeyInt))
+							}
+						} else if App.Modo == 31 {
+							if !App.DB.ExistKey(fmt.Sprintf("%064x", g.PrivKeyInt)) {
+								break
+							} else {
+								if xFail > 100 {
+									App.Modo = 3
+									xFail = 0
+								} else {
+									//log.Println("(31)key tested", fmt.Sprintf("%064x", g.PrivKeyInt))
+									x := g.PrivKeyInt.Add(g.PrivKeyInt, big.NewInt(1))
+									g.PrivKeyInt = new(big.Int).Set(x)
+									//log.Println("(31)find other", fmt.Sprintf("%064x \n %064x", x, g.PrivKeyInt))
+									xFail++
+								}
+							}
+						}
+					}
+					App.DB.InsertKey(fmt.Sprintf("%064x", g.PrivKeyInt))
+				}
+			}
+
 			privKeyCopy := new(big.Int).Set(g.PrivKeyInt)
 			select {
 			case g.KeyChannel <- privKeyCopy:
@@ -109,14 +147,16 @@ func (g *GenKeys) Start() {
 					App.StartPosPercent = g.genRandom()
 					g.fromPercent()
 				} else {
-					g.PrivKeyInt.Add(g.PrivKeyInt, big.NewInt(1))
 					if App.Modo == 31 {
-						if xTmpRandomCtrl > 10000 {
+						if xTmpRandomCtrl > g.NumRecsRandom {
+							// Na proxima chave volta a fazer um random
 							App.Modo = 3
 							xTmpRandomCtrl = 0
+						} else {
+							xTmpRandomCtrl++
 						}
-						xTmpRandomCtrl++
 					}
+					g.PrivKeyInt.Add(g.PrivKeyInt, big.NewInt(1))
 				}
 				g.TotalGenKeys++
 
@@ -135,6 +175,11 @@ func (g GenKeys) GetTotalKeys() float64 {
 // Get Last Key
 func (g *GenKeys) GetLastKey() *big.Int {
 	return g.PrivKeyInt
+}
+
+// Set Numero de Resc no Random
+func (g *GenKeys) SetRecs(recs int) {
+	g.NumRecsRandom = recs
 }
 
 // Gerar um valor % random
