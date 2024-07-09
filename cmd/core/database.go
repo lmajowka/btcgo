@@ -9,6 +9,7 @@ package core
 import (
 	"btcgo/cmd/utils"
 	"log"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -16,13 +17,16 @@ import (
 )
 
 type dbase struct {
-	dbConn *badger.DB
-	DBName string
+	dbConn  *badger.DB
+	DBName  string
+	isStart bool
 }
 
 // Criar instancia
 func NewDatabase() *dbase {
-	return &dbase{}
+	return &dbase{
+		isStart: false,
+	}
 }
 
 // Start
@@ -35,6 +39,7 @@ func (db *dbase) Start(carteira string) {
 		log.Fatal(err)
 	}
 	db.dbConn = dbo
+	db.isStart = true
 }
 
 // Add Key to DB
@@ -55,7 +60,15 @@ func (db *dbase) ExistKey(key string) bool {
 	return err == nil
 }
 
+// Delete Db
+func (db *dbase) Remove(carteira string) error {
+	rootDir, _ := utils.GetPath()
+	return os.RemoveAll(filepath.Join(rootDir, "db", carteira+".db"))
+}
+
 // Stop
 func (db *dbase) Stop() {
-	db.dbConn.Close()
+	if db.isStart {
+		db.dbConn.Close()
+	}
 }

@@ -44,7 +44,8 @@ func (w *Wallet) Load() error {
 		return err
 	}
 	for i, address := range walletsTemp.Addresses {
-		w.DataWallet[address] = true
+		w.DataWallet[string(Decode(address)[1:21])] = true
+		//w.DataWallet[address] = true
 		w.DataWalletID[i] = address
 	}
 	return nil

@@ -67,10 +67,12 @@ func (w *Workers) run() {
 			return
 		}
 		address := utils.CreatePublicHash160(privKeyInt)
-		wallet := utils.Hash160ToAddress(address)
+		//wallet := utils.Hash160ToAddress(address)
 
 		// Verificar se a chave está na carteira
-		if App.Wallets.Exist(wallet) {
+		//if App.Wallets.Exist(wallet) {
+		if App.Wallets.Exist(string(address)) {
+			wallet := utils.Hash160ToAddress(address)
 			w.ResultChannel <- &utils.ResultDataStruct{
 				Wallet:   wallet,
 				Key:      privKeyInt,
