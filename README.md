@@ -6,9 +6,9 @@
   -  [Git][install-git]
   -  Terminal
 
-# Instruções para rodar o projeto (na Windows)
+# Instruções para rodar o projeto no Windows.
 
- * Clona o repo e entra na pasta:
+ * Clona o repo e brota na pasta:
 ```bash
   git clone git@github.com:lmajowka/btcgo.git && cd btcgo
 ```
@@ -29,9 +29,9 @@
 ```
 
 
-# Instruções para rodar o projeto (no Linux ou MacOS)
+# Instruções para rodar o projeto no Linux / MacOS.
 
- * Clona o repo e entra na pasta:
+ * Clona o repo e brota na pasta:
 ```bash
   git clone git@github.com:lmajowka/btcgo.git && cd btcgo
 ```
@@ -51,7 +51,7 @@
   ./btcgo
 ```
 
-# Instruções para rodar o projeto (em container)
+# Instruções para rodar o projeto em container.
 
 ## Requisitos
   -  [Docker][install-docker]
@@ -59,16 +59,21 @@
   -  [Git][install-git]
 
 ## Execução da parada
-É tão fácil como voar:
 
  * Clona o repo:
-  ``` git clone git@github.com:lmajowka/btcgo.git && cd btcgo```
+```bash
+  git clone git@github.com:lmajowka/btcgo.git && cd btcgo
+```
  * Build do Dockerfile:
-   ``` docker buildx build --no-cache -t btcgo .```
+```bash
+  docker buildx build --no-cache -t btcgo .
+```
  * Executa a imagem contruída no passo anterior:
-   ``` docker run --rm -it --name btcgo btcgo```
+```bash
+  docker run --rm -it --name btcgo btcgo
+```
 
-Este container será deletado se a aplicação for parada, para  executar novamente posteriormente, basta executar o último comando acima.
+Este container será deletado se a aplicação parar, para executar novamente basta executar o último comando acima.
 
 
 [install-go]: https://go.dev/doc/install
