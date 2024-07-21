@@ -10,22 +10,22 @@
 
  * Clona o repo e brota na pasta:
 ```bash
-  git clone git@github.com:lmajowka/btcgo.git && cd btcgo
+git clone [git@github.com:lmajowka/btcgo.git](https://github.com/lmajowka/btcgo.git) && cd btcgo
 ```
  
  * Instala as parada:
 ```bash
-  go mod tidy
+go mod tidy
 ```
 
  * Faz o build do projeto:
 ```bash
-  go build -o btcgo.exe ./cmd/main.go
+go build -o btcgo.exe ./cmd/main.go
 ```
 
  * Executa o que foi compilado:
 ```bash
-  btcgo
+btcgo
 ```
 
 
@@ -33,22 +33,22 @@
 
  * Clona o repo e brota na pasta:
 ```bash
-  git clone git@github.com:lmajowka/btcgo.git && cd btcgo
+  git clone [git@github.com:lmajowka/btcgo.git](https://github.com/lmajowka/btcgo.git) && cd btcgo
 ```
  
  * Instala as parada:
 ```bash
-  go mod tidy
+ go mod tidy
 ```
 
  * Faz o build do projeto:
 ```bash
-  go build -o btcgo ./cmd/main.go
+go build -o btcgo ./cmd/main.go
 ```
 
  * Executa o que foi compilado:
 ```bash
-  ./btcgo
+./btcgo
 ```
 
 # Instruções para rodar o projeto em container.
@@ -62,15 +62,15 @@
 
  * Clona o repo:
 ```bash
-  git clone git@github.com:lmajowka/btcgo.git && cd btcgo
+git clone git@github.com:lmajowka/btcgo.git && cd btcgo
 ```
  * Build do Dockerfile:
 ```bash
-  docker buildx build --no-cache -t btcgo .
+docker buildx build --no-cache -t btcgo .
 ```
  * Executa a imagem contruída no passo anterior:
 ```bash
-  docker run --rm -it --name btcgo btcgo
+docker run --rm -it --name btcgo btcgo
 ```
 
 Este container será deletado se a aplicação parar, para executar novamente basta executar o último comando acima.
