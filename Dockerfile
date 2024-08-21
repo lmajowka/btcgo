@@ -1,8 +1,12 @@
-FROM golang
+FROM golang AS stage1
 WORKDIR /app
-RUN git clone -b main --single-branch --depth=1 https://github.com/lmajowka/btcgo.git btcgo
-WORKDIR /app/btcgo
-RUN rm -rf .git
-RUN go mod tidy
-RUN go build -o btcgo ./cmd/main.go
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o btcgo ./cmd/main.go
+
+FROM scratch
+COPY --from=stage1 /app/btcgo /
+COPY --from=stage1 /app/data /data
 CMD ["./btcgo"]
+ENTRYPOINT [ "/btcgo" ]
