@@ -32,3 +32,5 @@ btcgo.exe
 # Ignore files code
 chaves_encontradas.txt
 ultimaChavePorCarteira.txt
+
+.env

@@ -1,4 +1,4 @@
-# BTC GO v0.6.0
+# BTC GO v0.7.0
 [![instalação do Go no Windows](https://img.youtube.com/vi/679Zc7ZQLtI/0.jpg)](https://www.youtube.com/watch?v=679Zc7ZQLtI)
 
 ## Requisitos
@@ -64,13 +64,53 @@ go build -o btcgo ./cmd/main.go
 ```bash
 git clone git@github.com:lmajowka/btcgo.git && cd btcgo
 ```
- * Build do Dockerfile:
-```bash
-docker buildx build --no-cache -t btcgo .
+
+Atualize o arquivo .env com as informações exitentes em .env.example:
 ```
- * Executa a imagem contruída no passo anterior:
+Número de CPU a ser utilizada
+CPU=4
+
+Qual carteira deseja buscar
+WALLET=66
+
+Defina o modo de busca. 
+  1 - Desde o início
+  2 - Sequencial (chave do arquivo)
+  3 - Modo aleatório
+MODE=3
+
+Deseja utilizar base de dados para controlar as repetições
+  1 - Sim
+  2 - Não
+DB=1
+
+Numero registos por cada busca aleatória.
+RANDON_REGISTRY=10000
+```
+
+ * Sobre o projeto:
 ```bash
-docker run --rm -it --name btcgo btcgo
+make up
+```
+
+ * Para a execução:
+```bash
+make down
+```
+
+ * Reinicia a aplicação:
+```bash
+make down
+```
+
+ * Atualiza o projeto:
+```bash
+make update_version
+```
+
+ * Acompanhar em tempo real:
+```bash
+make logs
 ```
 
 Este container será deletado se a aplicação parar, para executar novamente basta executar o último comando acima.

@@ -1,0 +1,7 @@
+version: "3.8"
+services:
+  btcgo:
+    hostname: "btcgo"
+    build: .
+    container_name: "btcgo"
+    env_file: ".env"
