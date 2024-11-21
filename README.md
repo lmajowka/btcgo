@@ -79,4 +79,4 @@ Este container será deletado se a aplicação parar, para executar novamente ba
 [install-go]: https://go.dev/doc/install
 [install-git]: https://git-scm.com/download/win
 [install-docker]: https://www.docker.com/get-started/
-[install-docker-compose]: https://docs.docker.com/compose/install/
+[install-docker-compose]: https://docs.docker.com/compose/install/12
